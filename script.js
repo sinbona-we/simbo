@@ -97,6 +97,7 @@ const els = {
   weeklyChart: document.getElementById("weeklyChart"),
   completionChart: document.getElementById("completionChart"),
   simbaFab: document.getElementById("simbaFab"),
+  simbaBackdrop: document.getElementById("simbaBackdrop"),
   simbaPanel: document.getElementById("simbaPanel"),
   simbaForm: document.getElementById("simbaForm"),
   simbaInput: document.getElementById("simbaInput"),
@@ -515,6 +516,7 @@ function bindSimba() {
     }
   });
   els.simbaClose.addEventListener("click", closeSimbaPanel);
+  els.simbaBackdrop.addEventListener("click", closeSimbaPanel);
   els.simbaClear.addEventListener("click", () => {
     state.simbaChat = [];
     persist();
@@ -891,6 +893,8 @@ function closeProfileModal() {
 }
 
 function openSimbaPanel() {
+  els.simbaBackdrop.classList.add("open");
+  els.simbaBackdrop.setAttribute("aria-hidden", "false");
   els.simbaPanel.classList.add("open");
   els.simbaPanel.setAttribute("aria-hidden", "false");
   els.simbaInput.focus();
@@ -899,6 +903,8 @@ function openSimbaPanel() {
 }
 
 function closeSimbaPanel() {
+  els.simbaBackdrop.classList.remove("open");
+  els.simbaBackdrop.setAttribute("aria-hidden", "true");
   els.simbaPanel.classList.remove("open");
   els.simbaPanel.setAttribute("aria-hidden", "true");
   showSimbaTyping(false);
@@ -969,19 +975,28 @@ function generateSimbaResponse(input) {
   if (/(^|\b)(hello|hi|hey|yo)(\b|$)/.test(text)) {
     return `Hello ${profile.name}. I am Simba. I can help you organize study blocks, protect focus, and stay consistent daily.`;
   }
-  if (text.includes("help me study") || text.includes("study plan")) {
+  if (text.includes("help me study") || text.includes("study plan") || text.includes("how to study")) {
     return "Here is a practical plan:\n1) Pick one priority subject for deep work.\n2) Run 3 Pomodoro focus sessions.\n3) Review flashcards for 20 minutes.\n4) Capture key notes and one takeaway.\n5) End with a 5-minute recap and tomorrow's first task.";
   }
-  if (text.includes("what is pomodoro") || text.includes("pomodoro")) {
+  if (text.includes("what is pomodoro")) {
     return "Pomodoro is a timeboxing method: focus for a fixed interval (usually 25 minutes), then take a short break (5 minutes). After a few rounds, take a longer break. It protects focus and prevents burnout.";
+  }
+  if (text.includes("what is focus")) {
+    return "Focus is your ability to direct attention to one meaningful task while resisting distractions. In practice, it improves when you define one clear objective, remove interruptions, and work in short high-intensity blocks.";
+  }
+  if (text.includes("what is memory")) {
+    return "Memory is how your brain encodes, stores, and retrieves information. You can strengthen it through active recall, spaced repetition, and frequent review rather than passive rereading.";
   }
   if (text.includes("motivate me") || text.includes("motivation")) {
     return "You do not need perfect energy. You need one clean start. Finish the next focused session and let momentum carry the rest.";
   }
-  if (text.includes("i am tired") || text.includes("im tired") || text.includes("exhausted")) {
+  if (text.includes("i am tired") || text.includes("im tired") || text.includes("exhausted") || text.includes("i can't study") || text.includes("i cant study")) {
     return "That is okay. Reduce intensity, not consistency. Do one short session, hydrate, then continue with a lighter review block.";
   }
-  return "I can help with study plans, focus strategy, Pomodoro guidance, and motivation. Try asking: 'help me study', 'what is pomodoro', or 'motivate me'.";
+  if (text.includes("how to be productive") || text.includes("focus tips") || text.includes("productive")) {
+    return "Try this productivity routine:\n- Start with a single top priority.\n- Work in 25-40 minute focus blocks.\n- Keep your phone away and notifications off.\n- Take short recovery breaks.\n- End by planning the first task for tomorrow.";
+  }
+  return "I am not fully sure what you mean yet, but I can help with studying, productivity, Pomodoro, focus, memory, and motivation. Try asking a direct question in one line.";
 }
 
 function loadState() {

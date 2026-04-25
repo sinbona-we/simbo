@@ -3,29 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SimbaStudy</title>
+    <meta name="description" content="SimbaStudy - The all-in-one academic operating system for students worldwide. AI-powered study platform combining productivity, analytics, and motivation.">
+    <meta name="keywords" content="study app, AI tutor, student productivity, pomodoro timer, flashcard generator, academic planner">
+    <meta name="author" content="SimbaStudy">
+    <meta name="theme-color" content="#0a0a2e">
+    <meta property="og:title" content="SimbaStudy - Academic OS">
+    <meta property="og:description" content="Transform the way you study with AI-powered tools, smart planning, and performance analytics.">
+    <meta property="og:type" content="website">
+    <title>SimbaStudy | The All-in-One Academic Operating System</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-    <div class="sidebar">
-        <div class="logo">
-            <h1>🦁 SimbaStudy</h1>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-logo">🦁</div>
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Preparing your study environment...</p>
         </div>
-        <nav>
-            <button onclick="showPage('dashboard')" class="nav-btn active" id="dashboardBtn">📊 Dashboard</button>
-            <button onclick="showPage('studyhub')" class="nav-btn" id="studyhubBtn">🧠 AI Study Hub</button>
-            <button onclick="showPage('planner')" class="nav-btn" id="plannerBtn">📅 Planner</button>
-            <button onclick="showPage('vault')" class="nav-btn" id="vaultBtn">📚 Knowledge Vault</button>
-            <button onclick="showPage('focus')" class="nav-btn" id="focusBtn">🎯 Focus Mode</button>
-            <button onclick="showPage('analytics')" class="nav-btn" id="analyticsBtn">📈 Analytics</button>
-            <button onclick="showPage('motivation')" class="nav-btn" id="motivationBtn">💪 Motivation</button>
-            <button onclick="showPage('login')" class="nav-btn" id="loginBtn">👤 Account</button>
-        </nav>
     </div>
-    <div class="main-content" id="mainContent">
-        <h1>🦁 Welcome to SimbaStudy!</h1>
-        <p>Loading your study dashboard...</p>
+
+    <!-- App Container -->
+    <div class="app-container" id="appContainer">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <span class="brand-icon">🦁</span>
+                    <div class="brand-text">
+                        <h1 class="brand-name">Simba<span class="brand-highlight">Study</span></h1>
+                        <p class="brand-tagline">Academic OS</p>
+                    </div>
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <p class="nav-section-title">Main</p>
+                    <button class="nav-item active" data-page="dashboard" aria-label="Dashboard">
+                        <i class="fas fa-th-large"></i>
+                        <span class="nav-text">Dashboard</span>
+                        <span class="nav-badge" id="pendingTasksBadge">0</span>
+                    </button>
+                    <button class="nav-item" data-page="studyhub" aria-label="Study Hub">
+                        <i class="fas fa-brain"></i>
+                        <span class="nav-text">Study Hub</span>
+                    </button>
+                    <button class="nav-item" data-page="productivity" aria-label="Productivity">
+                        <i class="fas fa-bolt"></i>
+                        <span class="nav-text">Productivity</span>
+                    </button>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-section-title">Workspace</p>
+                    <button class="nav-item" data-page="vault" aria-label="Knowledge Vault">
+                        <i class="fas fa-folder-tree"></i>
+                        <span class="nav-text">Knowledge Vault</span>
+                    </button>
+                    <button class="nav-item" data-page="analytics" aria-label="Analytics">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="nav-text">Analytics</span>
+                    </button>
+                    <button class="nav-item" data-page="motivation" aria-label="Motivation">
+                        <i class="fas fa-fire"></i>
+                        <span class="nav-text">Motivation</span>
+                    </button>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-section-title">System</p>
+                    <button class="nav-item" data-page="settings" aria-label="Settings">
+                        <i class="fas fa-cog"></i>
+                        <span class="nav-text">Settings</span>
+                    </button>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card" id="sidebarUserCard">
+                    <div class="user-avatar" id="sidebarAvatar">S</div>
+                    <div class="user-info">
+                        <p class="user-name" id="sidebarUserName">Student</p>
+                        <p class="user-plan">Free Plan</p>
+                    </div>
+                    <button class="user-menu-btn" id="userMenuBtn" aria-label="User menu">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+                <div class="user-dropdown" id="userDropdown">
+                    <button class="dropdown-item" id="profileBtn"><i class="fas fa-user"></i> Profile</button>
+                    <button class="dropdown-item" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-area">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" class="search-input" id="globalSearch" placeholder="Search notes, topics, flashcards...">
+                        <kbd class="search-shortcut">⌘K</kbd>
+                    </div>
+                </div>
+                <div class="topbar-right">
+                    <button class="topbar-icon-btn" id="notificationsBtn" aria-label="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-dot" id="notificationDot"></span>
+                    </button>
+                    <button class="topbar-icon-btn quick-action" data-action="focus" aria-label="Quick focus mode">
+                        <i class="fas fa-clock"></i>
+                    </button>
+                    <button class="topbar-icon-btn quick-action" data-action="newNote" aria-label="New note">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <div class="topbar-user">
+                        <div class="topbar-avatar" id="topbarAvatar">S</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content Container -->
+            <div class="page-content" id="pageContent">
+                <!-- Pages render here dynamically -->
+            </div>
+        </main>
+
+        <!-- Notifications Panel -->
+        <div class="notifications-panel" id="notificationsPanel">
+            <div class="panel-header">
+                <h3>Notifications</h3>
+                <button class="panel-close" id="closeNotifications"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="panel-body" id="notificationsList">
+                <div class="empty-state">
+                    <i class="fas fa-bell-slash"></i>
+                    <p>No new notifications</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Overlay -->
+        <div class="modal-overlay" id="modalOverlay"></div>
+        
+        <!-- Auth Modal -->
+        <div class="modal" id="authModal">
+            <div class="modal-content">
+                <button class="modal-close" id="closeAuthModal"><i class="fas fa-times"></i></button>
+                <div class="auth-container" id="authContainer">
+                    <!-- Login/Signup forms render here -->
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav" id="mobileNav">
+        <button class="mobile-nav-item active" data-page="dashboard">
+            <i class="fas fa-th-large"></i>
+            <span>Home</span>
+        </button>
+        <button class="mobile-nav-item" data-page="studyhub">
+            <i class="fas fa-brain"></i>
+            <span>Study</span>
+        </button>
+        <button class="mobile-nav-item" data-page="productivity">
+            <i class="fas fa-bolt"></i>
+            <span>Focus</span>
+        </button>
+        <button class="mobile-nav-item" data-page="vault">
+            <i class="fas fa-folder"></i>
+            <span>Vault</span>
+        </button>
+        <button class="mobile-nav-item" data-page="analytics">
+            <i class="fas fa-chart-bar"></i>
+            <span>Stats</span>
+        </button>
+    </nav>
+
     <script src="script.js"></script>
 </body>
 </html>

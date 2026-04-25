@@ -1149,3 +1149,4 @@ function escapeHtml(value) {
 function escapeHtmlAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#96;");
 }
+

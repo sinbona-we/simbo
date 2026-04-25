@@ -3,110 +3,429 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SimbaStudy - AI-powered learning platform for students">
-    <meta name="theme-color" content="#1a1a2e">
-    <title>SimbaStudy | AI Learning Platform</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <title>SimbaStudy - All-in-One Academic OS</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-    <!-- App Container -->
-    <div class="app">
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-brand">
-                <div class="brand-logo">
-                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                        <circle cx="16" cy="16" r="16" fill="url(#gradient)"/>
-                        <defs>
-                            <linearGradient id="gradient" x1="0" y1="0" x2="32" y2="32">
-                                <stop offset="0%" stop-color="#FFD700"/>
-                                <stop offset="100%" stop-color="#FFA500"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                </div>
-                <div class="brand-info">
-                    <h1 class="brand-name">SimbaStudy</h1>
-                    <span class="brand-subtitle">Academic OS</span>
-                </div>
-            </div>
-
-            <nav class="sidebar-nav">
-                <p class="nav-label">MENU</p>
-                <a href="#" class="nav-link active" data-page="dashboard">
-                    <i class="fas fa-th-large"></i> Dashboard
-                </a>
-                <a href="#" class="nav-link" data-page="aitutor">
-                    <i class="fas fa-robot"></i> AI Tutor
-                </a>
-                <a href="#" class="nav-link" data-page="notes">
-                    <i class="fas fa-sticky-note"></i> Notes
-                </a>
-                <a href="#" class="nav-link" data-page="quizzes">
-                    <i class="fas fa-question-circle"></i> Quizzes
-                </a>
-                <a href="#" class="nav-link" data-page="flashcards">
-                    <i class="fas fa-layer-group"></i> Flashcards
-                </a>
-                <a href="#" class="nav-link" data-page="planner">
-                    <i class="fas fa-calendar-alt"></i> Planner
-                </a>
-                <a href="#" class="nav-link" data-page="progress">
-                    <i class="fas fa-chart-line"></i> Progress
-                </a>
-                <a href="#" class="nav-link" data-page="studyrooms">
-                    <i class="fas fa-users"></i> Study Rooms
-                </a>
-            </nav>
-
-            <div class="sidebar-footer">
-                <div class="user-card">
-                    <div class="user-avatar">M</div>
-                    <div class="user-details">
-                        <p class="user-name" id="sidebarUserName">Memo G</p>
-                        <p class="user-level">Level 1 · 0 XP</p>
-                    </div>
-                    <i class="fas fa-chevron-down"></i>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Mobile Header -->
-        <header class="mobile-header">
-            <button class="menu-toggle" id="menuToggle">
-                <i class="fas fa-bars"></i>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="logo-container">
+            <i class="fas fa-crown logo-icon"></i>
+            <span class="logo-text">SimbaStudy</span>
+        </div>
+        
+        <nav class="nav-menu">
+            <button class="nav-item active" data-section="dashboard">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
             </button>
-            <h1 class="mobile-title">SimbaStudy</h1>
-            <div class="mobile-avatar">M</div>
-        </header>
-
-        <!-- Main Content -->
-        <main class="main-content" id="mainContent">
-            <!-- Dashboard rendered here -->
-        </main>
-
-        <!-- Mobile Bottom Nav -->
-        <nav class="bottom-nav">
-            <a href="#" class="bottom-nav-link active" data-page="dashboard">
-                <i class="fas fa-home"></i><span>Home</span>
-            </a>
-            <a href="#" class="bottom-nav-link" data-page="aitutor">
-                <i class="fas fa-robot"></i><span>AI Tutor</span>
-            </a>
-            <a href="#" class="bottom-nav-link" data-page="planner">
-                <i class="fas fa-calendar"></i><span>Planner</span>
-            </a>
-            <a href="#" class="bottom-nav-link" data-page="progress">
-                <i class="fas fa-chart-bar"></i><span>Progress</span>
-            </a>
-            <a href="#" class="bottom-nav-link" data-page="settings">
-                <i class="fas fa-cog"></i><span>Settings</span>
-            </a>
+            <button class="nav-item" data-section="studyhub">
+                <i class="fas fa-brain"></i>
+                <span>Study Hub</span>
+            </button>
+            <button class="nav-item" data-section="productivity">
+                <i class="fas fa-bolt"></i>
+                <span>Productivity</span>
+            </button>
+            <button class="nav-item" data-section="vault">
+                <i class="fas fa-book"></i>
+                <span>Knowledge Vault</span>
+            </button>
+            <button class="nav-item" data-section="analytics">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
+            </button>
+            <button class="nav-item" data-section="motivation">
+                <i class="fas fa-fire"></i>
+                <span>Motivation</span>
+            </button>
         </nav>
+
+        <div class="sidebar-footer">
+            <button class="nav-item" data-section="settings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </button>
+            <div class="user-profile">
+                <div class="avatar">SK</div>
+                <div class="user-info">
+                    <span class="user-name">Student King</span>
+                    <span class="user-plan">Premium Plan</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button id="mobileMenuBtn" class="mobile-menu-btn">
+            <i class="fas fa-bars"></i>
+        </button>
+        <span class="mobile-logo">SimbaStudy</span>
+        <button class="mobile-notif-btn">
+            <i class="fas fa-bell"></i>
+            <span class="notification-badge">3</span>
+        </button>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content" id="mainContent">
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="content-section active">
+            <div class="topbar">
+                <div class="search-container">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="globalSearch" placeholder="Search anything... (notes, topics, files)" class="search-input">
+                    <div id="searchResults" class="search-results hidden"></div>
+                </div>
+                <div class="topbar-actions">
+                    <button class="icon-btn notification-btn">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">3</span>
+                    </button>
+                    <button class="icon-btn quick-add-btn" id="quickAddBtn">
+                        <i class="fas fa-plus-circle"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="welcome-section">
+                <h1>Welcome back, <span class="highlight">Champion</span> 👑</h1>
+                <p class="subtitle">Your academic journey continues. Stay focused and conquer your goals.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card streak">
+                    <i class="fas fa-fire stat-icon"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="streakCount">7</span>
+                        <span class="stat-label">Day Streak</span>
+                    </div>
+                </div>
+                <div class="stat-card hours">
+                    <i class="fas fa-clock stat-icon"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="totalHours">24.5</span>
+                        <span class="stat-label">Study Hours</span>
+                    </div>
+                </div>
+                <div class="stat-card tasks">
+                    <i class="fas fa-check-circle stat-icon"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="completedTasks">12</span>
+                        <span class="stat-label">Tasks Done</span>
+                    </div>
+                </div>
+                <div class="stat-card quiz">
+                    <i class="fas fa-star stat-icon"></i>
+                    <div class="stat-info">
+                        <span class="stat-value" id="quizAverage">89%</span>
+                        <span class="stat-label">Quiz Average</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card today-schedule">
+                    <h3><i class="fas fa-calendar-day"></i> Today's Schedule</h3>
+                    <div id="scheduleList" class="schedule-list"></div>
+                    <button class="btn btn-outline add-schedule-btn">+ Add Task</button>
+                </div>
+                <div class="card quick-actions">
+                    <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="switchSection('studyhub')">
+                            <i class="fas fa-robot"></i> AI Tutor
+                        </button>
+                        <button class="action-btn" onclick="switchSection('productivity')">
+                            <i class="fas fa-clock"></i> Focus Mode
+                        </button>
+                        <button class="action-btn" onclick="switchSection('vault')">
+                            <i class="fas fa-file-upload"></i> Upload Notes
+                        </button>
+                        <button class="action-btn" onclick="createFlashcards()">
+                            <i class="fas fa-layer-group"></i> Flashcards
+                        </button>
+                    </div>
+                </div>
+                <div class="card motivation-card">
+                    <h3><i class="fas fa-quote-right"></i> Daily Motivation</h3>
+                    <p id="dailyQuote" class="quote-text"></p>
+                    <button class="btn btn-small" onclick="refreshQuote()">New Quote</button>
+                </div>
+                <div class="card progress-overview">
+                    <h3><i class="fas fa-chart-bar"></i> Weekly Progress</h3>
+                    <div class="progress-bars" id="weeklyProgress"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Study Hub Section -->
+        <section id="studyhub-section" class="content-section">
+            <h2><i class="fas fa-brain"></i> AI Study Hub</h2>
+            
+            <div class="study-hub-grid">
+                <div class="card ai-assistant">
+                    <h3>🤖 AI Study Assistant</h3>
+                    <div class="chat-container" id="chatContainer">
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message ai-message">
+                                <p>Hello! I'm your SimbaStudy AI assistant. Ask me anything about your studies, and I'll help you understand complex topics, solve problems, or create study materials.</p>
+                            </div>
+                        </div>
+                        <div class="chat-input-area">
+                            <textarea id="chatInput" placeholder="Ask me anything... (e.g., 'Explain photosynthesis simply')" rows="3"></textarea>
+                            <button class="btn btn-primary" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i> Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card topic-breakdown">
+                    <h3>📚 Topic Breakdown Engine</h3>
+                    <div class="input-group">
+                        <input type="text" id="topicInput" placeholder="Enter a subject or topic...">
+                        <button class="btn btn-primary" onclick="breakdownTopic()">Analyze Topic</button>
+                    </div>
+                    <div id="topicBreakdownResult" class="breakdown-result"></div>
+                </div>
+
+                <div class="card flashcard-system">
+                    <h3>🃏 Smart Flashcards</h3>
+                    <div class="flashcard-container" id="flashcardContainer">
+                        <div class="flashcard" id="flashcard" onclick="flipFlashcard()">
+                            <div class="flashcard-front" id="flashcardFront">
+                                <p>Click to create or study flashcards</p>
+                            </div>
+                            <div class="flashcard-back" id="flashcardBack">
+                                <p>Answer will appear here</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flashcard-controls">
+                        <button class="btn btn-outline" onclick="previousCard()">Previous</button>
+                        <button class="btn btn-outline" id="difficultyBtn" onclick="markDifficulty()">Mark Difficulty</button>
+                        <button class="btn btn-outline" onclick="nextCard()">Next</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="createFlashcards()">Generate New Flashcards</button>
+                </div>
+
+                <div class="card quiz-builder">
+                    <h3>📝 Quiz Builder</h3>
+                    <div id="quizContainer">
+                        <div id="quizQuestion" class="quiz-question"></div>
+                        <div id="quizOptions" class="quiz-options"></div>
+                        <div id="quizResult" class="quiz-result hidden"></div>
+                    </div>
+                    <button class="btn btn-primary" onclick="startQuiz()">Start Quiz</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Productivity Section -->
+        <section id="productivity-section" class="content-section">
+            <h2><i class="fas fa-bolt"></i> Productivity & Focus Center</h2>
+            
+            <div class="productivity-grid">
+                <div class="card pomodoro-timer">
+                    <h3>⏱️ Focus Timer (Pomodoro)</h3>
+                    <div class="timer-display" id="timerDisplay">25:00</div>
+                    <div class="timer-mode" id="timerMode">Focus Time</div>
+                    <div class="timer-controls">
+                        <button class="btn btn-primary" id="timerStartBtn" onclick="toggleTimer()">Start</button>
+                        <button class="btn btn-outline" onclick="resetTimer()">Reset</button>
+                        <button class="btn btn-outline" onclick="skipTimer()">Skip</button>
+                    </div>
+                    <div class="timer-settings">
+                        <label>Focus: <input type="number" id="focusTime" value="25" min="1" max="60"> min</label>
+                        <label>Break: <input type="number" id="breakTime" value="5" min="1" max="30"> min</label>
+                    </div>
+                    <div class="session-counter">
+                        Sessions completed: <span id="sessionCount">0</span>
+                    </div>
+                </div>
+
+                <div class="card study-planner">
+                    <h3>📅 Smart Study Planner</h3>
+                    <div class="planner-input">
+                        <input type="text" id="taskInput" placeholder="Add a study task...">
+                        <select id="prioritySelect">
+                            <option value="high">High Priority</option>
+                            <option value="medium">Medium Priority</option>
+                            <option value="low">Low Priority</option>
+                        </select>
+                        <input type="date" id="taskDate">
+                        <button class="btn btn-primary" onclick="addTask()">Add Task</button>
+                    </div>
+                    <div id="plannerTasks" class="planner-tasks"></div>
+                </div>
+
+                <div class="card habit-tracker">
+                    <h3>✅ Habit Tracker</h3>
+                    <div id="habitsList" class="habits-list"></div>
+                    <button class="btn btn-outline" onclick="addHabit()">+ Add Habit</button>
+                </div>
+
+                <div class="card distraction-blocker">
+                    <h3>🚫 Focus Mode</h3>
+                    <button class="btn btn-primary btn-large" onclick="enterFocusMode()">
+                        <i class="fas fa-lock"></i> Enter Full Focus Mode
+                    </button>
+                    <p class="helper-text">Blocks distractions and keeps you on track</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Knowledge Vault Section -->
+        <section id="vault-section" class="content-section">
+            <h2><i class="fas fa-book"></i> Knowledge Vault</h2>
+            
+            <div class="vault-grid">
+                <div class="card notes-editor">
+                    <h3>📝 Notes Workspace</h3>
+                    <div class="editor-toolbar">
+                        <button onclick="formatText('bold')"><i class="fas fa-bold"></i></button>
+                        <button onclick="formatText('italic')"><i class="fas fa-italic"></i></button>
+                        <button onclick="formatText('underline')"><i class="fas fa-underline"></i></button>
+                        <button onclick="addHeading()">H</button>
+                        <button onclick="addBulletList()"><i class="fas fa-list-ul"></i></button>
+                        <button onclick="addCodeBlock()"><i class="fas fa-code"></i></button>
+                    </div>
+                    <div id="notesEditor" class="rich-editor" contenteditable="true">
+                        <h2>My Study Notes</h2>
+                        <p>Start typing your notes here...</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveNote()">Save Note</button>
+                    <button class="btn btn-outline" onclick="loadNotes()">Load Notes</button>
+                </div>
+
+                <div class="card file-upload">
+                    <h3>📁 File Storage</h3>
+                    <div class="upload-area" id="uploadArea">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p>Drag & drop files or click to upload</p>
+                        <input type="file" id="fileInput" multiple hidden>
+                        <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Select Files</button>
+                    </div>
+                    <div id="fileList" class="file-list"></div>
+                </div>
+
+                <div class="card ai-summarizer">
+                    <h3>🤖 AI Summarizer</h3>
+                    <textarea id="summarizeInput" placeholder="Paste text or upload a document to summarize..." rows="6"></textarea>
+                    <button class="btn btn-primary" onclick="summarizeText()">Summarize</button>
+                    <div id="summaryResult" class="summary-result hidden"></div>
+                </div>
+
+                <div class="card folder-system">
+                    <h3>📂 Folders</h3>
+                    <div id="folderList" class="folder-list"></div>
+                    <button class="btn btn-outline" onclick="createFolder()">+ New Folder</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Section -->
+        <section id="analytics-section" class="content-section">
+            <h2><i class="fas fa-chart-line"></i> Performance Analytics</h2>
+            
+            <div class="analytics-grid">
+                <div class="card">
+                    <h3>📊 Study Hours Overview</h3>
+                    <canvas id="studyHoursChart"></canvas>
+                </div>
+                <div class="card">
+                    <h3>🎯 Subject Performance</h3>
+                    <div id="subjectPerformance"></div>
+                </div>
+                <div class="card">
+                    <h3>⚠️ Weakness Detector</h3>
+                    <div id="weaknessDetector"></div>
+                </div>
+                <div class="card">
+                    <h3>📈 Progress Forecast</h3>
+                    <div id="progressForecast"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Motivation Section -->
+        <section id="motivation-section" class="content-section">
+            <h2><i class="fas fa-fire"></i> Motivation & Growth Space</h2>
+            
+            <div class="motivation-grid">
+                <div class="card">
+                    <h3>🏆 Achievement Badges</h3>
+                    <div id="badgesList" class="badges-grid"></div>
+                </div>
+                <div class="card">
+                    <h3>📝 Reflection Journal</h3>
+                    <textarea id="journalEntry" placeholder="What did you learn today? What challenged you?" rows="4"></textarea>
+                    <button class="btn btn-primary" onclick="saveJournalEntry()">Save Entry</button>
+                    <div id="journalEntries"></div>
+                </div>
+                <div class="card">
+                    <h3>🎯 Vision Board</h3>
+                    <div id="visionBoard" class="vision-board"></div>
+                    <button class="btn btn-outline" onclick="addVisionItem()">+ Add Goal</button>
+                </div>
+                <div class="card">
+                    <h3>🌟 Community Inspiration</h3>
+                    <div id="communityWall" class="community-wall"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settings-section" class="content-section">
+            <h2><i class="fas fa-cog"></i> Settings</h2>
+            <div class="settings-grid">
+                <div class="card">
+                    <h3>👤 Profile Settings</h3>
+                    <label>Display Name: <input type="text" id="displayName" value="Student King"></label>
+                    <label>Learning Style: 
+                        <select id="learningStyle">
+                            <option value="visual">Visual Learner</option>
+                            <option value="auditory">Auditory Learner</option>
+                            <option value="kinesthetic">Kinesthetic Learner</option>
+                        </select>
+                    </label>
+                    <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                </div>
+                <div class="card">
+                    <h3>🔔 Notification Preferences</h3>
+                    <label><input type="checkbox" checked> Study reminders</label>
+                    <label><input type="checkbox" checked> Deadline alerts</label>
+                    <label><input type="checkbox"> Community updates</label>
+                </div>
+                <div class="card">
+                    <h3>🎨 Theme</h3>
+                    <button class="btn btn-outline" onclick="toggleTheme()">Toggle Dark/Light Mode</button>
+                </div>
+                <div class="card">
+                    <h3>📊 Data Management</h3>
+                    <button class="btn btn-outline" onclick="exportData()">Export Data</button>
+                    <button class="btn btn-outline" onclick="clearAllData()">Clear All Data</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Focus Mode Overlay -->
+    <div id="focusModeOverlay" class="focus-overlay hidden">
+        <div class="focus-content">
+            <h1>🔒 Focus Mode Active</h1>
+            <p>Stay focused. You've got this!</p>
+            <div class="focus-timer-large" id="focusTimerLarge">25:00</div>
+            <button class="btn btn-primary" onclick="exitFocusMode()">Exit Focus Mode</button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modalOverlay" class="modal-overlay hidden">
+        <div class="modal" id="modalContent"></div>
     </div>
 
     <script src="script.js"></script>

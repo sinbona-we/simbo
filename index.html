@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimbaStudy</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <h1>🦁 SimbaStudy</h1>
+        </div>
+        <nav>
+            <button onclick="showPage('dashboard')" class="nav-btn active" id="dashboardBtn">📊 Dashboard</button>
+            <button onclick="showPage('studyhub')" class="nav-btn" id="studyhubBtn">🧠 AI Study Hub</button>
+            <button onclick="showPage('planner')" class="nav-btn" id="plannerBtn">📅 Planner</button>
+            <button onclick="showPage('vault')" class="nav-btn" id="vaultBtn">📚 Knowledge Vault</button>
+            <button onclick="showPage('focus')" class="nav-btn" id="focusBtn">🎯 Focus Mode</button>
+            <button onclick="showPage('analytics')" class="nav-btn" id="analyticsBtn">📈 Analytics</button>
+            <button onclick="showPage('motivation')" class="nav-btn" id="motivationBtn">💪 Motivation</button>
+            <button onclick="showPage('login')" class="nav-btn" id="loginBtn">👤 Account</button>
+        </nav>
+    </div>
+    <div class="main-content" id="mainContent">
+        <h1>🦁 Welcome to SimbaStudy!</h1>
+        <p>Loading your study dashboard...</p>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

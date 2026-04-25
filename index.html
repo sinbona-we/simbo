@@ -1,355 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SimbaStudy - All-in-One Academic OS</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimbaStudy - Academic Operating System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar" id="sidebar">
-        <div class="logo">
-            <span class="logo-icon">🦁</span>
-            <span class="logo-text">SimbaStudy</span>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">S</div>
+        <div>
+          <h1>SimbaStudy</h1>
+          <p>Student OS</p>
         </div>
-        
-        <nav class="nav-menu">
-            <a href="#" class="nav-item active" data-page="dashboard">
-                <i class="fas fa-th-large"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="#" class="nav-item" data-page="studyhub">
-                <i class="fas fa-brain"></i>
-                <span>Study Hub</span>
-            </a>
-            <a href="#" class="nav-item" data-page="productivity">
-                <i class="fas fa-bolt"></i>
-                <span>Productivity</span>
-            </a>
-            <a href="#" class="nav-item" data-page="vault">
-                <i class="fas fa-vault"></i>
-                <span>Knowledge Vault</span>
-            </a>
-            <a href="#" class="nav-item" data-page="analytics">
-                <i class="fas fa-chart-line"></i>
-                <span>Analytics</span>
-            </a>
-            <a href="#" class="nav-item" data-page="motivation">
-                <i class="fas fa-fire"></i>
-                <span>Motivation</span>
-            </a>
-            <a href="#" class="nav-item" data-page="settings">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
-            </a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <div class="user-profile">
-                <div class="user-avatar">SK</div>
-                <div class="user-info">
-                    <span class="user-name">Student King</span>
-                    <span class="user-plan">Premium Plan</span>
-                </div>
-            </div>
-        </div>
+      </div>
+      <nav id="sideNav">
+        <button class="nav-link active" data-section="dashboard">Dashboard</button>
+        <button class="nav-link" data-section="study-hub">Study Hub</button>
+        <button class="nav-link" data-section="productivity">Productivity</button>
+        <button class="nav-link" data-section="vault">Vault</button>
+        <button class="nav-link" data-section="analytics">Analytics</button>
+        <button class="nav-link" data-section="motivation">Motivation</button>
+        <button class="nav-link" data-section="settings">Settings</button>
+      </nav>
     </aside>
 
-    <!-- Main Content Area -->
     <main class="main-content">
-        <!-- Top Bar -->
-        <header class="topbar">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search anything... (notes, topics, files)" id="searchInput" oninput="handleSearch()">
-            </div>
-            <div class="topbar-right">
-                <button class="icon-btn notification-btn">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-dot">3</span>
-                </button>
-                <button class="icon-btn">
-                    <i class="fas fa-cog"></i>
-                </button>
-            </div>
-        </header>
-
-        <!-- Dashboard Page -->
-        <div class="page active" id="dashboard-page">
-            <div class="welcome-section">
-                <h1>Welcome back, <span class="gold-text">Champion</span> 👑</h1>
-                <p class="welcome-subtitle">Your academic journey continues. Stay focused and conquer your goals.</p>
-            </div>
-
-            <div class="stats-row">
-                <div class="stat-card">
-                    <div class="stat-icon">🔥</div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="streakCount">7</span>
-                        <span class="stat-label">Day Streak</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⏰</div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="studyHours">24.5</span>
-                        <span class="stat-label">Study Hours</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">✅</div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="tasksDone">12</span>
-                        <span class="stat-label">Tasks Done</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⭐</div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="quizAvg">89%</span>
-                        <span class="stat-label">Quiz Average</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="dashboard-grid">
-                <div class="card schedule-card">
-                    <h3>Today's Schedule</h3>
-                    <div class="schedule-list" id="scheduleList"></div>
-                    <button class="add-task-btn" onclick="addNewTask()">+ Add Task</button>
-                </div>
-
-                <div class="card quick-actions-card">
-                    <h3>Quick Actions</h3>
-                    <div class="quick-actions-grid">
-                        <button class="quick-action-btn" onclick="navigateTo('studyhub')">
-                            <i class="fas fa-robot"></i>
-                            <span>AI Tutor</span>
-                        </button>
-                        <button class="quick-action-btn" onclick="navigateTo('productivity')">
-                            <i class="fas fa-clock"></i>
-                            <span>Focus Mode</span>
-                        </button>
-                        <button class="quick-action-btn" onclick="navigateTo('vault')">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Upload Notes</span>
-                        </button>
-                        <button class="quick-action-btn" onclick="generateFlashcards()">
-                            <i class="fas fa-layer-group"></i>
-                            <span>Flashcards</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="card motivation-card">
-                    <h3>Daily Motivation</h3>
-                    <div class="quote-container">
-                        <p class="quote-text" id="dailyQuote">"The expert in anything was once a beginner."</p>
-                        <button class="refresh-quote-btn" onclick="refreshQuote()">
-                            <i class="fas fa-sync-alt"></i> New Quote
-                        </button>
-                    </div>
-                </div>
-
-                <div class="card progress-card">
-                    <h3>Weekly Progress</h3>
-                    <div class="progress-bars" id="weeklyProgress">
-                        <div class="progress-item">
-                            <span>Mon</span>
-                            <div class="progress-bar"><div class="progress-fill" style="width:60%"></div></div>
-                            <span>3h</span>
-                        </div>
-                        <div class="progress-item">
-                            <span>Tue</span>
-                            <div class="progress-bar"><div class="progress-fill" style="width:90%"></div></div>
-                            <span>4.5h</span>
-                        </div>
-                        <div class="progress-item">
-                            <span>Wed</span>
-                            <div class="progress-bar"><div class="progress-fill" style="width:40%"></div></div>
-                            <span>2h</span>
-                        </div>
-                        <div class="progress-item">
-                            <span>Thu</span>
-                            <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
-                            <span>5h</span>
-                        </div>
-                        <div class="progress-item">
-                            <span>Fri</span>
-                            <div class="progress-bar"><div class="progress-fill" style="width:70%"></div></div>
-                            <span>3.5h</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <header class="topbar glass">
+        <input id="globalSearch" type="search" placeholder="Search tasks, notes, flashcards..." />
+        <div class="topbar-right">
+          <button id="quickAddTaskBtn" class="btn ghost">+ Quick Task</button>
+          <button id="notificationBtn" class="btn ghost">Notifications</button>
+          <div class="profile-pill">
+            <span id="profileInitial">S</span>
+            <strong id="profileName">Student</strong>
+          </div>
         </div>
+      </header>
 
-        <!-- Study Hub Page -->
-        <div class="page" id="studyhub-page">
-            <h2>📚 Study Hub</h2>
-            <div class="study-hub-content">
-                <div class="card">
-                    <h3>🤖 AI Study Assistant</h3>
-                    <div class="chat-box">
-                        <div class="chat-messages" id="chatMessages">
-                            <div class="message bot-message">
-                                Hello! I'm your AI study assistant. Ask me anything about your subjects.
-                            </div>
-                        </div>
-                        <div class="chat-input-row">
-                            <input type="text" id="chatInput" placeholder="Ask a question..." onkeypress="if(event.key==='Enter')sendChatMessage()">
-                            <button onclick="sendChatMessage()"><i class="fas fa-paper-plane"></i> Send</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3>🃏 Flashcards</h3>
-                    <div class="flashcard" id="flashcard" onclick="flipCard()">
-                        <div class="flashcard-inner" id="flashcardInner">
-                            <div class="flashcard-front" id="flashcardFront">What is photosynthesis?</div>
-                            <div class="flashcard-back" id="flashcardBack">Process by which plants convert sunlight into energy</div>
-                        </div>
-                    </div>
-                    <div class="flashcard-controls">
-                        <button onclick="prevFlashcard()">← Previous</button>
-                        <button onclick="nextFlashcard()">Next →</button>
-                    </div>
-                </div>
-                <div class="card">
-                    <h3>📝 Quick Quiz</h3>
-                    <div id="quizArea">
-                        <p id="quizQuestion">What is the capital of France?</p>
-                        <div id="quizOptions">
-                            <button onclick="checkQuizAnswer(0)">London</button>
-                            <button onclick="checkQuizAnswer(1)">Paris</button>
-                            <button onclick="checkQuizAnswer(2)">Berlin</button>
-                            <button onclick="checkQuizAnswer(3)">Madrid</button>
-                        </div>
-                        <p id="quizFeedback" style="margin-top:10px;font-weight:600;"></p>
-                    </div>
-                </div>
-            </div>
+      <section id="dashboard" class="section active">
+        <div class="section-header">
+          <h2>Dashboard</h2>
+          <p>From confusion to consistency.</p>
         </div>
+        <div class="grid two">
+          <article class="card glass">
+            <h3>Today's Schedule</h3>
+            <ul id="todayScheduleList" class="list"></ul>
+            <form id="scheduleForm" class="inline-form">
+              <input id="scheduleTitle" required placeholder="Study session title" />
+              <input id="scheduleTime" type="time" required />
+              <button type="submit" class="btn primary">Add</button>
+            </form>
+          </article>
 
-        <!-- Productivity Page -->
-        <div class="page" id="productivity-page">
-            <h2>⚡ Productivity Center</h2>
-            <div class="productivity-grid">
-                <div class="card">
-                    <h3>⏱️ Focus Timer (Pomodoro)</h3>
-                    <div class="timer-display" id="timerDisplay">25:00</div>
-                    <p style="text-align:center;color:#666;" id="timerLabel">Focus Time</p>
-                    <div class="timer-controls">
-                        <button id="timerBtn" onclick="toggleTimer()">▶ Start</button>
-                        <button onclick="resetTimer()">↺ Reset</button>
-                    </div>
-                    <div class="timer-settings">
-                        <label>Focus: <input type="number" id="focusMinutes" value="25" min="1" max="60"> min</label>
-                        <label>Break: <input type="number" id="breakMinutes" value="5" min="1" max="30"> min</label>
-                    </div>
-                    <p style="text-align:center;margin-top:10px;">Sessions completed: <strong id="sessionCount">0</strong></p>
-                </div>
-                <div class="card">
-                    <h3>📋 Study Planner</h3>
-                    <input type="text" id="plannerTaskInput" placeholder="Add a study task..." style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;">
-                    <button onclick="addPlannerTask()" style="padding:10px 20px;background:#f0b90b;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Add Task</button>
-                    <div id="plannerTaskList" style="margin-top:12px;"></div>
-                </div>
-            </div>
+          <article class="card glass">
+            <h3>Study Streak</h3>
+            <p class="hero-number"><span id="streakCount">0</span> days</p>
+            <p id="streakMessage" class="muted">Start your first streak today.</p>
+            <button id="markTodayStudied" class="btn primary">Mark Today Studied</button>
+          </article>
         </div>
+        <div class="grid three">
+          <article class="card glass">
+            <h3>Pending Tasks</h3>
+            <ul id="taskList" class="list"></ul>
+          </article>
+          <article class="card glass">
+            <h3>Motivational Message</h3>
+            <p id="motivationalMessage"></p>
+            <button id="newQuoteBtn" class="btn ghost">New Message</button>
+          </article>
+          <article class="card glass">
+            <h3>Quick Launch</h3>
+            <div class="quick-grid">
+              <button class="btn ghost jump" data-jump="study-hub">Generate Quiz</button>
+              <button class="btn ghost jump" data-jump="productivity">Start Focus</button>
+              <button class="btn ghost jump" data-jump="vault">Take Notes</button>
+              <button class="btn ghost jump" data-jump="analytics">View Progress</button>
+            </div>
+          </article>
+        </div>
+      </section>
 
-        <!-- Knowledge Vault Page -->
-        <div class="page" id="vault-page">
-            <h2>📁 Knowledge Vault</h2>
-            <div class="vault-grid">
-                <div class="card">
-                    <h3>📝 Notes Editor</h3>
-                    <div contenteditable="true" class="notes-editor" id="notesEditor">
-                        <h2>Start typing your notes here...</h2>
-                        <p>Use this space to organize your study materials.</p>
-                    </div>
-                    <button onclick="saveNotes()" style="padding:10px 20px;background:#f0b90b;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-right:8px;">💾 Save Notes</button>
-                    <button onclick="loadNotes()" style="padding:10px 20px;background:#e9ecef;border:none;border-radius:8px;cursor:pointer;">📂 Load Saved</button>
-                </div>
-                <div class="card">
-                    <h3>📂 My Folders</h3>
-                    <div id="folderList">
-                        <div class="folder-item" onclick="alert('Opening Mathematics folder...')">📁 Mathematics</div>
-                        <div class="folder-item" onclick="alert('Opening Physics folder...')">📁 Physics</div>
-                        <div class="folder-item" onclick="alert('Opening History folder...')">📁 History</div>
-                    </div>
-                    <button onclick="addFolder()" style="margin-top:12px;padding:8px 16px;border:1px dashed #ccc;background:transparent;border-radius:20px;cursor:pointer;">+ New Folder</button>
-                </div>
-            </div>
+      <section id="study-hub" class="section">
+        <div class="section-header">
+          <h2>Smart Study Hub</h2>
+          <p>Understand, practice, and master every topic.</p>
         </div>
+        <div class="grid two">
+          <article class="card glass">
+            <h3>AI Study Assistant</h3>
+            <form id="assistantForm">
+              <textarea id="assistantInput" rows="4" placeholder="Ask for explanation, summary, or examples..." required></textarea>
+              <button class="btn primary" type="submit">Get Guidance</button>
+            </form>
+            <div id="assistantOutput" class="output"></div>
+          </article>
+          <article class="card glass">
+            <h3>Topic Breakdown Engine</h3>
+            <form id="topicForm" class="inline-form stack">
+              <input id="topicInput" placeholder="e.g. Photosynthesis" required />
+              <button class="btn primary" type="submit">Break Down Topic</button>
+            </form>
+            <ul id="topicModules" class="list"></ul>
+          </article>
+        </div>
+        <div class="grid two">
+          <article class="card glass">
+            <h3>Flashcard Generator</h3>
+            <form id="flashcardForm" class="inline-form stack">
+              <input id="flashQuestion" placeholder="Question" required />
+              <input id="flashAnswer" placeholder="Answer" required />
+              <button class="btn primary" type="submit">Add Flashcard</button>
+            </form>
+            <div id="flashcardDeck" class="deck"></div>
+          </article>
+          <article class="card glass">
+            <h3>Quiz Builder</h3>
+            <form id="quizForm" class="inline-form stack">
+              <input id="quizTopic" placeholder="Quiz topic" required />
+              <button class="btn primary" type="submit">Generate Quiz</button>
+            </form>
+            <div id="quizArea"></div>
+          </article>
+        </div>
+      </section>
 
-        <!-- Analytics Page -->
-        <div class="page" id="analytics-page">
-            <h2>📊 Performance Analytics</h2>
-            <div class="card">
-                <h3>Study Hours Overview</h3>
-                <div style="display:flex;align-items:flex-end;gap:20px;height:200px;padding:20px;">
-                    <div style="width:40px;background:linear-gradient(#f0b90b,#ffd966);height:60%;border-radius:8px 8px 0 0;"></div>
-                    <div style="width:40px;background:linear-gradient(#f0b90b,#ffd966);height:90%;border-radius:8px 8px 0 0;"></div>
-                    <div style="width:40px;background:linear-gradient(#f0b90b,#ffd966);height:40%;border-radius:8px 8px 0 0;"></div>
-                    <div style="width:40px;background:linear-gradient(#f0b90b,#ffd966);height:100%;border-radius:8px 8px 0 0;"></div>
-                    <div style="width:40px;background:linear-gradient(#f0b90b,#ffd966);height:70%;border-radius:8px 8px 0 0;"></div>
-                </div>
-                <p style="text-align:center;color:#666;">Mon - Fri Study Hours</p>
-            </div>
+      <section id="productivity" class="section">
+        <div class="section-header">
+          <h2>Productivity & Focus Center</h2>
+          <p>Defeat procrastination with structure.</p>
         </div>
+        <div class="grid two">
+          <article class="card glass">
+            <h3>Smart Study Planner</h3>
+            <form id="plannerForm" class="inline-form">
+              <input id="plannerTask" placeholder="Task title" required />
+              <input id="plannerDue" type="date" required />
+              <select id="plannerPriority">
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+              <button class="btn primary" type="submit">Add Task</button>
+            </form>
+            <ul id="plannerList" class="list"></ul>
+          </article>
 
-        <!-- Motivation Page -->
-        <div class="page" id="motivation-page">
-            <h2>🔥 Motivation & Growth</h2>
-            <div class="card">
-                <h3>🏆 Achievement Badges</h3>
-                <div class="badges-grid">
-                    <div class="badge">🌟 7-Day Streak</div>
-                    <div class="badge">📚 10+ Study Hours</div>
-                    <div class="badge">🎯 Perfect Quiz</div>
-                    <div class="badge">🌅 Early Riser</div>
-                </div>
+          <article class="card glass">
+            <h3>Focus Timer (Pomodoro)</h3>
+            <p class="hero-number" id="timerDisplay">25:00</p>
+            <div class="inline-form">
+              <input id="focusMinutes" type="number" min="5" max="120" value="25" />
+              <button id="startTimer" class="btn primary">Start</button>
+              <button id="pauseTimer" class="btn ghost">Pause</button>
+              <button id="resetTimer" class="btn ghost">Reset</button>
             </div>
-            <div class="card">
-                <h3>📝 Reflection Journal</h3>
-                <textarea id="journalInput" placeholder="What did you learn today?" rows="4"></textarea>
-                <button onclick="saveJournalEntry()" style="padding:10px 20px;background:#f0b90b;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Save Entry</button>
-                <div id="journalEntries" style="margin-top:16px;"></div>
-            </div>
-            <div class="card">
-                <h3>🎯 Vision Board</h3>
-                <div id="visionBoard">
-                    <p>⭐ Graduate with honors</p>
-                    <p>⭐ Master calculus</p>
-                    <p>⭐ Get scholarship</p>
-                </div>
-                <button onclick="addVisionGoal()" style="padding:8px 16px;border:1px dashed #ccc;background:transparent;border-radius:20px;cursor:pointer;">+ Add Goal</button>
-            </div>
+            <p class="muted">Completed Sessions: <span id="sessionCount">0</span></p>
+          </article>
         </div>
+        <div class="grid two">
+          <article class="card glass">
+            <h3>Habit Tracker</h3>
+            <form id="habitForm" class="inline-form">
+              <input id="habitName" placeholder="Habit name" required />
+              <button class="btn primary" type="submit">Add Habit</button>
+            </form>
+            <ul id="habitList" class="list"></ul>
+          </article>
+          <article class="card glass">
+            <h3>AI Schedule Optimizer</h3>
+            <button id="optimizeBtn" class="btn primary">Optimize My Day</button>
+            <ul id="optimizerOutput" class="list"></ul>
+          </article>
+        </div>
+      </section>
 
-        <!-- Settings Page -->
-        <div class="page" id="settings-page">
-            <h2>⚙️ Settings</h2>
-            <div class="card">
-                <h3>👤 Profile Settings</h3>
-                <label>Display Name:</label>
-                <input type="text" id="displayNameInput" value="Student King">
-                <label>Email:</label>
-                <input type="email" value="student@simbastudy.com">
-                <label>Learning Style:</label>
-                <select style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;">
-                    <option>Visual Learner</option>
-                    <option>Auditory Learner</option>
-                    <option>Kinesthetic Learner</option>
-                </select>
-                <button onclick="saveSettings()" style="margin-top:12px;padding:10px 20px;background:#f0b90b;border:none;border-radius:8px;cursor:pointer;font-weight:600;">Save Changes</button>
-            </div>
+      <section id="vault" class="section">
+        <div class="section-header">
+          <h2>Knowledge Vault</h2>
+          <p>Your organized academic memory system.</p>
         </div>
+        <div class="grid two">
+          <article class="card glass">
+            <h3>Notes Workspace</h3>
+            <form id="noteForm" class="inline-form stack">
+              <input id="noteTitle" placeholder="Note title" required />
+              <textarea id="noteBody" rows="6" placeholder="Write structured notes..." required></textarea>
+              <button class="btn primary" type="submit">Save Note</button>
+            </form>
+          </article>
+          <article class="card glass">
+            <h3>Search Notes & Resources</h3>
+            <input id="vaultSearch" placeholder="Search by title or content" />
+            <ul id="noteList" class="list"></ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="analytics" class="section">
+        <div class="section-header">
+          <h2>Performance Analytics</h2>
+          <p>Measure growth and reveal weak points.</p>
+        </div>
+        <div class="grid three">
+          <article class="card glass">
+            <h3>Total Study Hours</h3>
+            <p class="hero-number" id="studyHours">0h</p>
+          </article>
+          <article class="card glass">
+            <h3>Quiz Accuracy</h3>
+            <p class="hero-number" id="quizAccuracy">0%</p>
+          </article>
+          <article class="card glass">
+            <h3>Task Completion</h3>
+            <p class="hero-number" id="taskCompletion">0%</p>
+          </article>
+        </div>
+        <article class="card glass">
+          <h3>Progress Chart</h3>
+          <canvas id="progressChart" width="1000" height="260"></canvas>
+        </article>
+      </section>
+
+      <section id="motivation" class="section">
+        <div class="section-header">
+          <h2>Motivation & Growth Space</h2>
+          <p>Build resilience and momentum.</p>
+        </div>
+        <div class="grid two">
+          <article class="card glass">
+            <h3>Reflection Journal</h3>
+            <form id="journalForm" class="inline-form stack">
+              <textarea id="journalText" rows="5" placeholder="What did you learn today?" required></textarea>
+              <button class="btn primary" type="submit">Save Reflection</button>
+            </form>
+            <ul id="journalList" class="list"></ul>
+          </article>
+          <article class="card glass">
+            <h3>Vision Board</h3>
+            <form id="visionForm" class="inline-form stack">
+              <input id="visionGoal" placeholder="Long-term goal" required />
+              <button class="btn primary" type="submit">Add Goal</button>
+            </form>
+            <ul id="visionList" class="list"></ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="settings" class="section">
+        <div class="section-header">
+          <h2>Settings</h2>
+          <p>Personalize your learning environment.</p>
+        </div>
+        <article class="card glass">
+          <form id="settingsForm" class="inline-form">
+            <input id="studentName" placeholder="Your name" />
+            <select id="studentLevel">
+              <option value="high-school">High School</option>
+              <option value="university">University</option>
+              <option value="self-learner">Self-Learner</option>
+            </select>
+            <button class="btn primary" type="submit">Save Preferences</button>
+          </form>
+        </article>
+      </section>
     </main>
-
-    <script src="script.js"></script>
+  </div>
+  <script src="script.js"></script>
 </body>
 </html>

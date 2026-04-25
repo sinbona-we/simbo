@@ -249,12 +249,13 @@
     </div>
   </div>
 
-  <button id="simbaFab" class="simba-fab" aria-label="Open Simba assistant" type="button">S</button>
+  <div id="simbaBackdrop" class="simba-backdrop" aria-hidden="true"></div>
+  <button id="simbaFab" class="simba-fab" aria-label="Open Simba assistant" type="button">AI</button>
   <section id="simbaPanel" class="simba-panel glass" aria-label="Simba assistant" aria-hidden="true">
     <header class="simba-header">
       <div>
         <p class="eyebrow">AI Study Assistant</p>
-        <h3>Simba</h3>
+        <h3>Simba AI Assistant <span class="simba-online-dot" aria-hidden="true"></span></h3>
       </div>
       <div class="inline-controls">
         <button id="simbaClear" class="btn ghost small" type="button">Clear</button>
@@ -262,7 +263,7 @@
       </div>
     </header>
     <div id="simbaMessages" class="simba-messages"></div>
-    <div id="simbaTyping" class="simba-typing" aria-live="polite">Simba is thinking...</div>
+    <div id="simbaTyping" class="simba-typing" aria-live="polite">Simba is typing...</div>
     <form id="simbaForm" class="simba-form">
       <input id="simbaInput" class="input" type="text" placeholder="Ask Simba anything about studying..." maxlength="240" required />
       <button class="btn primary" type="submit">Send</button>
@@ -274,5 +275,4 @@
   <script src="script.js"></script>
 </body>
 </html>
-
 

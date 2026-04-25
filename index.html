@@ -46,9 +46,11 @@
         <div class="topbar-title">
           <p class="eyebrow">Educational Productivity Suite</p>
           <h2 id="sectionTitle">Dashboard</h2>
+          <p class="welcome-line">Welcome back, <strong id="userNameDisplay">Scholar</strong></p>
         </div>
         <div class="top-actions">
           <input id="globalSearch" class="input" type="search" placeholder="Search tasks, notes, decks..." aria-label="Global search" />
+          <button id="openProfileBtn" class="btn ghost">Profile</button>
           <button id="quickAddTask" class="btn primary">+ Quick Task</button>
         </div>
       </header>
@@ -59,6 +61,7 @@
             <p class="eyebrow">Today&apos;s Mission</p>
             <h3>Build deep focus, track measurable progress, and master your study flow.</h3>
             <p class="subtle">A premium control center for daily consistency and high-performance learning.</p>
+            <p class="hero-goal">Current goal: <span id="userGoalDisplay">Set your study goal from Profile</span></p>
           </div>
           <div class="hero-actions">
             <button class="btn primary" data-section-target="timer">Start Focus Session</button>
@@ -223,6 +226,48 @@
       </section>
     </main>
   </div>
+
+  <div id="profileModal" class="modal-overlay" aria-hidden="true">
+    <div class="profile-modal glass" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+      <div class="card-header">
+        <h3 id="profileTitle">Your Profile</h3>
+        <button id="closeProfileBtn" class="btn ghost small" type="button">Close</button>
+      </div>
+      <div class="profile-avatar" id="profileAvatarPreview" aria-hidden="true">S</div>
+      <form id="profileForm" class="form-col">
+        <label>Name
+          <input id="profileName" class="input" type="text" maxlength="40" placeholder="Your name" />
+        </label>
+        <label>Study Goal
+          <input id="profileGoal" class="input" type="text" maxlength="100" placeholder="e.g., Master Physics in 90 days" />
+        </label>
+        <label>Bio (optional)
+          <textarea id="profileBio" class="input" rows="3" maxlength="180" placeholder="Your short study identity..."></textarea>
+        </label>
+        <button class="btn primary" type="submit">Save Profile</button>
+      </form>
+    </div>
+  </div>
+
+  <button id="simbaFab" class="simba-fab" aria-label="Open Simba assistant" type="button">S</button>
+  <section id="simbaPanel" class="simba-panel glass" aria-label="Simba assistant" aria-hidden="true">
+    <header class="simba-header">
+      <div>
+        <p class="eyebrow">AI Study Assistant</p>
+        <h3>Simba</h3>
+      </div>
+      <div class="inline-controls">
+        <button id="simbaClear" class="btn ghost small" type="button">Clear</button>
+        <button id="simbaClose" class="btn ghost small" type="button">Close</button>
+      </div>
+    </header>
+    <div id="simbaMessages" class="simba-messages"></div>
+    <div id="simbaTyping" class="simba-typing" aria-live="polite">Simba is thinking...</div>
+    <form id="simbaForm" class="simba-form">
+      <input id="simbaInput" class="input" type="text" placeholder="Ask Simba anything about studying..." maxlength="240" required />
+      <button class="btn primary" type="submit">Send</button>
+    </form>
+  </section>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 

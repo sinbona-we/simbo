@@ -1,4 +1,14 @@
 const storageKey = "simboStudyOS.v1";
+const AI_CONFIG = {
+  provider: "gemini", // "gemini" or "openai"
+  apiKey: "YOUR_API_KEY_HERE",
+  // Optional: set proxy URL if you use your own secure relay.
+  // Example: "https://your-proxy.example.com/v1/chat/completions"
+  proxyUrl: "",
+  geminiModel: "gemini-1.5-flash",
+  openAiModel: "gpt-4o-mini",
+  maxContextMessages: 14
+};
 const defaults = {
   tasks: [],
   notes: [],
@@ -30,7 +40,7 @@ let timer = {
 let quizRun = null;
 let flashcardIndex = 0;
 let toastTimerId = null;
-let simbaThinkingId = null;
+let simbaRequestInFlight = false;
 
 const els = {
   sectionTitle: document.getElementById("sectionTitle"),
@@ -101,6 +111,7 @@ const els = {
   simbaPanel: document.getElementById("simbaPanel"),
   simbaForm: document.getElementById("simbaForm"),
   simbaInput: document.getElementById("simbaInput"),
+  simbaSend: document.querySelector("#simbaForm button[type='submit']"),
   simbaMessages: document.getElementById("simbaMessages"),
   simbaTyping: document.getElementById("simbaTyping"),
   simbaClose: document.getElementById("simbaClose"),
@@ -523,19 +534,26 @@ function bindSimba() {
     renderSimbaMessages();
     addAssistantMessage("Chat cleared. I am ready to help you study with a focused strategy.");
   });
-  els.simbaForm.addEventListener("submit", (event) => {
+  els.simbaForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (simbaRequestInFlight) {
+      return;
+    }
     const text = els.simbaInput.value.trim();
     if (!text) {
       return;
     }
     addUserMessage(text);
     els.simbaInput.value = "";
-    showSimbaTyping(true);
-    simbaThinkingId = window.setTimeout(() => {
-      showSimbaTyping(false);
-      addAssistantMessage(generateSimbaResponse(text));
-    }, 650);
+    setSimbaLoading(true);
+    try {
+      const answer = await requestSimbaReply();
+      addAssistantMessage(answer);
+    } catch {
+      addAssistantMessage("Simba is temporarily unavailable. Please try again.");
+    } finally {
+      setSimbaLoading(false);
+    }
   });
 }
 
@@ -949,11 +967,15 @@ function renderSimbaMessages() {
 }
 
 function showSimbaTyping(isVisible) {
-  if (!isVisible && simbaThinkingId) {
-    window.clearTimeout(simbaThinkingId);
-    simbaThinkingId = null;
-  }
   els.simbaTyping.classList.toggle("show", isVisible);
+}
+
+function setSimbaLoading(isLoading) {
+  simbaRequestInFlight = isLoading;
+  showSimbaTyping(isLoading);
+  els.simbaInput.disabled = isLoading;
+  els.simbaSend.disabled = isLoading;
+  els.simbaSend.textContent = isLoading ? "Sending..." : "Send";
 }
 
 function scrollSimbaToBottom() {
@@ -969,34 +991,111 @@ function sanitizeProfile(profile) {
   };
 }
 
-function generateSimbaResponse(input) {
-  const text = input.toLowerCase();
+function buildSimbaSystemPrompt() {
   const profile = sanitizeProfile(state.profile);
-  if (/(^|\b)(hello|hi|hey|yo)(\b|$)/.test(text)) {
-    return `Hello ${profile.name}. I am Simba. I can help you organize study blocks, protect focus, and stay consistent daily.`;
+  return `You are Simba, a highly intelligent and friendly study assistant inside a learning app.
+Help students study, explain concepts simply, build practical plans, and keep them motivated and disciplined.
+Keep answers clear, concise, and actionable.
+Address the user by name occasionally: ${profile.name}.
+Current user study goal: ${profile.goal}.
+If the user asks non-study questions, still respond helpfully and politely.`;
+}
+
+function buildContextMessages() {
+  const max = AI_CONFIG.maxContextMessages;
+  const recent = state.simbaChat.slice(-max);
+  return recent
+    .filter((entry) => entry && (entry.role === "user" || entry.role === "assistant"))
+    .map((entry) => ({
+      role: entry.role,
+      content: entry.text
+    }));
+}
+
+async function requestSimbaReply() {
+  if (!AI_CONFIG.apiKey || AI_CONFIG.apiKey === "YOUR_API_KEY_HERE") {
+    throw new Error("Missing API key");
   }
-  if (text.includes("help me study") || text.includes("study plan") || text.includes("how to study")) {
-    return "Here is a practical plan:\n1) Pick one priority subject for deep work.\n2) Run 3 Pomodoro focus sessions.\n3) Review flashcards for 20 minutes.\n4) Capture key notes and one takeaway.\n5) End with a 5-minute recap and tomorrow's first task.";
+  if (AI_CONFIG.provider === "openai") {
+    return requestOpenAiReply();
   }
-  if (text.includes("what is pomodoro")) {
-    return "Pomodoro is a timeboxing method: focus for a fixed interval (usually 25 minutes), then take a short break (5 minutes). After a few rounds, take a longer break. It protects focus and prevents burnout.";
+  return requestGeminiReply();
+}
+
+async function requestGeminiReply() {
+  const endpoint = AI_CONFIG.proxyUrl
+    ? AI_CONFIG.proxyUrl
+    : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(AI_CONFIG.geminiModel)}:generateContent?key=${encodeURIComponent(AI_CONFIG.apiKey)}`;
+
+  const context = buildContextMessages();
+  const contents = [
+    {
+      role: "user",
+      parts: [{ text: buildSimbaSystemPrompt() }]
+    },
+    ...context.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }]
+    }))
+  ];
+
+  const response = await fetchWithRetry(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents })
+  });
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!text) {
+    throw new Error("Invalid Gemini response");
   }
-  if (text.includes("what is focus")) {
-    return "Focus is your ability to direct attention to one meaningful task while resisting distractions. In practice, it improves when you define one clear objective, remove interruptions, and work in short high-intensity blocks.";
+  return text;
+}
+
+async function requestOpenAiReply() {
+  const endpoint = AI_CONFIG.proxyUrl || "https://api.openai.com/v1/chat/completions";
+  const messages = [
+    { role: "system", content: buildSimbaSystemPrompt() },
+    ...buildContextMessages()
+  ];
+  const response = await fetchWithRetry(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${AI_CONFIG.apiKey}`
+    },
+    body: JSON.stringify({
+      model: AI_CONFIG.openAiModel,
+      messages,
+      temperature: 0.6
+    })
+  });
+  const data = await response.json();
+  const text = data?.choices?.[0]?.message?.content?.trim();
+  if (!text) {
+    throw new Error("Invalid OpenAI response");
   }
-  if (text.includes("what is memory")) {
-    return "Memory is how your brain encodes, stores, and retrieves information. You can strengthen it through active recall, spaced repetition, and frequent review rather than passive rereading.";
+  return text;
+}
+
+async function fetchWithRetry(url, options) {
+  const first = await fetch(url, options);
+  if (first.ok) {
+    return first;
   }
-  if (text.includes("motivate me") || text.includes("motivation")) {
-    return "You do not need perfect energy. You need one clean start. Finish the next focused session and let momentum carry the rest.";
+  if (first.status >= 500 || first.status === 429) {
+    await sleep(700);
+    const second = await fetch(url, options);
+    if (second.ok) {
+      return second;
+    }
+    throw new Error(`API request failed: ${second.status}`);
   }
-  if (text.includes("i am tired") || text.includes("im tired") || text.includes("exhausted") || text.includes("i can't study") || text.includes("i cant study")) {
-    return "That is okay. Reduce intensity, not consistency. Do one short session, hydrate, then continue with a lighter review block.";
-  }
-  if (text.includes("how to be productive") || text.includes("focus tips") || text.includes("productive")) {
-    return "Try this productivity routine:\n- Start with a single top priority.\n- Work in 25-40 minute focus blocks.\n- Keep your phone away and notifications off.\n- Take short recovery breaks.\n- End by planning the first task for tomorrow.";
-  }
-  return "I am not fully sure what you mean yet, but I can help with studying, productivity, Pomodoro, focus, memory, and motivation. Try asking a direct question in one line.";
+  throw new Error(`API request failed: ${first.status}`);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function loadState() {

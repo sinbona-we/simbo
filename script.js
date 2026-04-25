@@ -10,7 +10,13 @@ const defaults = {
   pomodoroCount: 0,
   quizItems: [],
   weeklyMinutes: [30, 45, 60, 35, 75, 90, 50],
-  activeDeckId: null
+  activeDeckId: null,
+  profile: {
+    name: "Scholar",
+    goal: "Stay consistent with daily deep work",
+    bio: ""
+  },
+  simbaChat: []
 };
 
 const state = loadState();
@@ -24,16 +30,27 @@ let timer = {
 let quizRun = null;
 let flashcardIndex = 0;
 let toastTimerId = null;
+let simbaThinkingId = null;
 
 const els = {
   sectionTitle: document.getElementById("sectionTitle"),
+  userNameDisplay: document.getElementById("userNameDisplay"),
+  userGoalDisplay: document.getElementById("userGoalDisplay"),
   navMenu: document.getElementById("navMenu"),
   sections: document.querySelectorAll(".section"),
   navBtns: document.querySelectorAll(".nav-btn"),
   quickSectionButtons: document.querySelectorAll("[data-section-target]"),
   focusModeToggle: document.getElementById("focusModeToggle"),
   globalSearch: document.getElementById("globalSearch"),
+  openProfileBtn: document.getElementById("openProfileBtn"),
   quickAddTask: document.getElementById("quickAddTask"),
+  profileModal: document.getElementById("profileModal"),
+  closeProfileBtn: document.getElementById("closeProfileBtn"),
+  profileForm: document.getElementById("profileForm"),
+  profileName: document.getElementById("profileName"),
+  profileGoal: document.getElementById("profileGoal"),
+  profileBio: document.getElementById("profileBio"),
+  profileAvatarPreview: document.getElementById("profileAvatarPreview"),
   toast: document.getElementById("toast"),
   taskForm: document.getElementById("taskForm"),
   taskTitle: document.getElementById("taskTitle"),
@@ -78,7 +95,15 @@ const els = {
   quizStatus: document.getElementById("quizStatus"),
   quizPanel: document.getElementById("quizPanel"),
   weeklyChart: document.getElementById("weeklyChart"),
-  completionChart: document.getElementById("completionChart")
+  completionChart: document.getElementById("completionChart"),
+  simbaFab: document.getElementById("simbaFab"),
+  simbaPanel: document.getElementById("simbaPanel"),
+  simbaForm: document.getElementById("simbaForm"),
+  simbaInput: document.getElementById("simbaInput"),
+  simbaMessages: document.getElementById("simbaMessages"),
+  simbaTyping: document.getElementById("simbaTyping"),
+  simbaClose: document.getElementById("simbaClose"),
+  simbaClear: document.getElementById("simbaClear")
 };
 
 bootstrap();
@@ -90,6 +115,8 @@ function bootstrap() {
   bindFlashcards();
   bindNotes();
   bindQuiz();
+  bindProfile();
+  bindSimba();
   bindGlobalControls();
   bindMicroInteractions();
   renderAll();
@@ -451,6 +478,65 @@ function bindGlobalControls() {
   });
 }
 
+function bindProfile() {
+  els.openProfileBtn.addEventListener("click", openProfileModal);
+  els.closeProfileBtn.addEventListener("click", closeProfileModal);
+  els.profileModal.addEventListener("click", (event) => {
+    if (event.target === els.profileModal) {
+      closeProfileModal();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeProfileModal();
+      closeSimbaPanel();
+    }
+  });
+  els.profileForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = els.profileName.value.trim() || "Scholar";
+    const goal = els.profileGoal.value.trim() || "Stay consistent with daily deep work";
+    const bio = els.profileBio.value.trim();
+    state.profile = { name, goal, bio };
+    persist();
+    renderProfile();
+    closeProfileModal();
+    showToast("Profile saved");
+  });
+}
+
+function bindSimba() {
+  els.simbaFab.addEventListener("click", () => {
+    const willOpen = !els.simbaPanel.classList.contains("open");
+    if (willOpen) {
+      openSimbaPanel();
+    } else {
+      closeSimbaPanel();
+    }
+  });
+  els.simbaClose.addEventListener("click", closeSimbaPanel);
+  els.simbaClear.addEventListener("click", () => {
+    state.simbaChat = [];
+    persist();
+    renderSimbaMessages();
+    addAssistantMessage("Chat cleared. I am ready to help you study with a focused strategy.");
+  });
+  els.simbaForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const text = els.simbaInput.value.trim();
+    if (!text) {
+      return;
+    }
+    addUserMessage(text);
+    els.simbaInput.value = "";
+    showSimbaTyping(true);
+    simbaThinkingId = window.setTimeout(() => {
+      showSimbaTyping(false);
+      addAssistantMessage(generateSimbaResponse(text));
+    }, 650);
+  });
+}
+
 function bindMicroInteractions() {
   const cards = document.querySelectorAll(".card-elevated, .metric-card, .hero");
   cards.forEach((card) => {
@@ -469,6 +555,7 @@ function bindMicroInteractions() {
 }
 
 function renderAll() {
+  renderProfile();
   renderDashboard();
   renderPlanner();
   renderTimer();
@@ -476,6 +563,7 @@ function renderAll() {
   renderNotes();
   renderQuiz();
   renderAnalytics();
+  renderSimbaMessages();
 }
 
 function renderDashboard() {
@@ -779,6 +867,123 @@ function showToast(message) {
   }, 1800);
 }
 
+function renderProfile() {
+  const profile = sanitizeProfile(state.profile);
+  state.profile = profile;
+  els.userNameDisplay.textContent = profile.name;
+  els.userGoalDisplay.textContent = profile.goal;
+  els.profileName.value = profile.name;
+  els.profileGoal.value = profile.goal;
+  els.profileBio.value = profile.bio;
+  els.profileAvatarPreview.textContent = profile.name.charAt(0).toUpperCase();
+}
+
+function openProfileModal() {
+  renderProfile();
+  els.profileModal.classList.add("open");
+  els.profileModal.setAttribute("aria-hidden", "false");
+  els.profileName.focus();
+}
+
+function closeProfileModal() {
+  els.profileModal.classList.remove("open");
+  els.profileModal.setAttribute("aria-hidden", "true");
+}
+
+function openSimbaPanel() {
+  els.simbaPanel.classList.add("open");
+  els.simbaPanel.setAttribute("aria-hidden", "false");
+  els.simbaInput.focus();
+  ensureSimbaStarter();
+  scrollSimbaToBottom();
+}
+
+function closeSimbaPanel() {
+  els.simbaPanel.classList.remove("open");
+  els.simbaPanel.setAttribute("aria-hidden", "true");
+  showSimbaTyping(false);
+}
+
+function ensureSimbaStarter() {
+  if (state.simbaChat.length > 0) {
+    return;
+  }
+  addAssistantMessage(`Hi ${sanitizeProfile(state.profile).name}, I am Simba. Ask me for study plans, Pomodoro guidance, or motivation.`);
+}
+
+function addUserMessage(text) {
+  state.simbaChat.push({ role: "user", text, ts: Date.now() });
+  trimSimbaHistory();
+  persist();
+  renderSimbaMessages();
+}
+
+function addAssistantMessage(text) {
+  state.simbaChat.push({ role: "assistant", text, ts: Date.now() });
+  trimSimbaHistory();
+  persist();
+  renderSimbaMessages();
+}
+
+function trimSimbaHistory() {
+  if (state.simbaChat.length > 120) {
+    state.simbaChat = state.simbaChat.slice(-120);
+  }
+}
+
+function renderSimbaMessages() {
+  if (!Array.isArray(state.simbaChat) || state.simbaChat.length === 0) {
+    els.simbaMessages.innerHTML = '<p class="subtle">Start a conversation with Simba.</p>';
+    return;
+  }
+  els.simbaMessages.innerHTML = state.simbaChat
+    .map((item) => `<div class="simba-bubble ${item.role}">${escapeHtml(item.text)}</div>`)
+    .join("");
+  scrollSimbaToBottom();
+}
+
+function showSimbaTyping(isVisible) {
+  if (!isVisible && simbaThinkingId) {
+    window.clearTimeout(simbaThinkingId);
+    simbaThinkingId = null;
+  }
+  els.simbaTyping.classList.toggle("show", isVisible);
+}
+
+function scrollSimbaToBottom() {
+  els.simbaMessages.scrollTop = els.simbaMessages.scrollHeight;
+}
+
+function sanitizeProfile(profile) {
+  const safe = profile && typeof profile === "object" ? profile : {};
+  return {
+    name: typeof safe.name === "string" && safe.name.trim() ? safe.name.trim().slice(0, 40) : "Scholar",
+    goal: typeof safe.goal === "string" && safe.goal.trim() ? safe.goal.trim().slice(0, 100) : "Stay consistent with daily deep work",
+    bio: typeof safe.bio === "string" ? safe.bio.trim().slice(0, 180) : ""
+  };
+}
+
+function generateSimbaResponse(input) {
+  const text = input.toLowerCase();
+  const profile = sanitizeProfile(state.profile);
+  if (/(^|\b)(hello|hi|hey|yo)(\b|$)/.test(text)) {
+    return `Hello ${profile.name}. I am Simba. I can help you organize study blocks, protect focus, and stay consistent daily.`;
+  }
+  if (text.includes("help me study") || text.includes("study plan")) {
+    return "Here is a practical plan:\n1) Pick one priority subject for deep work.\n2) Run 3 Pomodoro focus sessions.\n3) Review flashcards for 20 minutes.\n4) Capture key notes and one takeaway.\n5) End with a 5-minute recap and tomorrow's first task.";
+  }
+  if (text.includes("what is pomodoro") || text.includes("pomodoro")) {
+    return "Pomodoro is a timeboxing method: focus for a fixed interval (usually 25 minutes), then take a short break (5 minutes). After a few rounds, take a longer break. It protects focus and prevents burnout.";
+  }
+  if (text.includes("motivate me") || text.includes("motivation")) {
+    return "You do not need perfect energy. You need one clean start. Finish the next focused session and let momentum carry the rest.";
+  }
+  if (text.includes("i am tired") || text.includes("im tired") || text.includes("exhausted")) {
+    return "That is okay. Reduce intensity, not consistency. Do one short session, hydrate, then continue with a lighter review block.";
+  }
+  return "I can help with study plans, focus strategy, Pomodoro guidance, and motivation. Try asking: 'help me study', 'what is pomodoro', or 'motivate me'.";
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(storageKey);
@@ -830,3 +1035,4 @@ function escapeHtml(value) {
 function escapeHtmlAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#96;");
 }
+

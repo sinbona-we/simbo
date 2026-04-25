@@ -857,3 +857,17 @@
   }
 
 })();
+// Start a focus session
+SimbaStudy.startFocusSession(25);
+
+// Submit a quiz answer
+SimbaStudy.submitQuizAnswer(true);
+
+// Get full dashboard data for rendering
+const data = SimbaStudy.getFullDashboardData();
+
+// Listen for state changes
+SimbaStudy.on('stateChange', (event) => {
+  const dashboardData = event.detail;
+  // Update your UI here
+});

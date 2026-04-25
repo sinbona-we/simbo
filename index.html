@@ -3,276 +3,226 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SimbaStudy - Academic Operating System</title>
+  <title>Simbo Study OS</title>
+  <meta name="description" content="Premium study dashboard with planner, pomodoro, flashcards, notes, quizzes, and analytics." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
+  <div class="bg-layer bg-layer-1" aria-hidden="true"></div>
+  <div class="bg-layer bg-layer-2" aria-hidden="true"></div>
+
+  <div id="app" class="app-shell">
+    <aside class="sidebar glass" aria-label="Primary navigation">
       <div class="brand">
-        <div class="brand-logo">S</div>
+        <div class="logo" aria-hidden="true">S</div>
         <div>
-          <h1>SimbaStudy</h1>
-          <p>Student OS</p>
+          <h1>Simbo Study OS</h1>
+          <p>Learn smarter</p>
         </div>
       </div>
-      <nav id="sideNav">
-        <button class="nav-link active" data-section="dashboard">Dashboard</button>
-        <button class="nav-link" data-section="study-hub">Study Hub</button>
-        <button class="nav-link" data-section="productivity">Productivity</button>
-        <button class="nav-link" data-section="vault">Vault</button>
-        <button class="nav-link" data-section="analytics">Analytics</button>
-        <button class="nav-link" data-section="motivation">Motivation</button>
-        <button class="nav-link" data-section="settings">Settings</button>
+      <nav class="nav" id="navMenu">
+        <button class="nav-btn active" data-section="dashboard" aria-label="Open dashboard">Dashboard</button>
+        <button class="nav-btn" data-section="planner" aria-label="Open planner">Planner</button>
+        <button class="nav-btn" data-section="timer" aria-label="Open pomodoro timer">Pomodoro</button>
+        <button class="nav-btn" data-section="flashcards" aria-label="Open flashcards">Flashcards</button>
+        <button class="nav-btn" data-section="notes" aria-label="Open notes">Notes</button>
+        <button class="nav-btn" data-section="quiz" aria-label="Open quiz">Quiz</button>
+        <button class="nav-btn" data-section="analytics" aria-label="Open analytics">Analytics</button>
       </nav>
+      <div class="sidebar-footer">
+        <button id="focusModeToggle" class="btn ghost wide" aria-pressed="false">Enter Focus Mode</button>
+      </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar glass">
-        <input id="globalSearch" type="search" placeholder="Search tasks, notes, flashcards..." />
-        <div class="topbar-right">
-          <button id="quickAddTaskBtn" class="btn ghost">+ Quick Task</button>
-          <button id="notificationBtn" class="btn ghost">Notifications</button>
-          <div class="profile-pill">
-            <span id="profileInitial">S</span>
-            <strong id="profileName">Student</strong>
-          </div>
+        <div>
+          <p class="eyebrow">Study Platform</p>
+          <h2 id="sectionTitle">Dashboard</h2>
+        </div>
+        <div class="top-actions">
+          <input id="globalSearch" class="input" type="search" placeholder="Search tasks, notes, decks..." aria-label="Global search" />
+          <button id="quickAddTask" class="btn primary">+ Quick Task</button>
         </div>
       </header>
 
-      <section id="dashboard" class="section active">
-        <div class="section-header">
-          <h2>Dashboard</h2>
-          <p>From confusion to consistency.</p>
-        </div>
-        <div class="grid two">
+      <section id="dashboard" class="section active" aria-label="Dashboard section">
+        <div class="kpi-grid">
           <article class="card glass">
-            <h3>Today's Schedule</h3>
-            <ul id="todayScheduleList" class="list"></ul>
-            <form id="scheduleForm" class="inline-form">
-              <input id="scheduleTitle" required placeholder="Study session title" />
-              <input id="scheduleTime" type="time" required />
-              <button type="submit" class="btn primary">Add</button>
-            </form>
+            <p>Daily Streak</p>
+            <h3 id="kpiStreak">0 days</h3>
           </article>
+          <article class="card glass">
+            <p>Completed Sessions</p>
+            <h3 id="kpiSessions">0</h3>
+          </article>
+          <article class="card glass">
+            <p>Study Hours</p>
+            <h3 id="kpiHours">0.0h</h3>
+          </article>
+          <article class="card glass">
+            <p>Active Goals</p>
+            <h3 id="kpiGoals">0</h3>
+          </article>
+        </div>
 
+        <div class="grid-two">
           <article class="card glass">
-            <h3>Study Streak</h3>
-            <p class="hero-number"><span id="streakCount">0</span> days</p>
-            <p id="streakMessage" class="muted">Start your first streak today.</p>
-            <button id="markTodayStudied" class="btn primary">Mark Today Studied</button>
-          </article>
-        </div>
-        <div class="grid three">
-          <article class="card glass">
-            <h3>Pending Tasks</h3>
-            <ul id="taskList" class="list"></ul>
+            <div class="card-header">
+              <h3>Today Agenda</h3>
+              <button class="btn ghost small" data-section-target="planner">Open Planner</button>
+            </div>
+            <ul id="todayAgenda" class="list"></ul>
           </article>
           <article class="card glass">
-            <h3>Motivational Message</h3>
-            <p id="motivationalMessage"></p>
-            <button id="newQuoteBtn" class="btn ghost">New Message</button>
-          </article>
-          <article class="card glass">
-            <h3>Quick Launch</h3>
-            <div class="quick-grid">
-              <button class="btn ghost jump" data-jump="study-hub">Generate Quiz</button>
-              <button class="btn ghost jump" data-jump="productivity">Start Focus</button>
-              <button class="btn ghost jump" data-jump="vault">Take Notes</button>
-              <button class="btn ghost jump" data-jump="analytics">View Progress</button>
+            <div class="card-header">
+              <h3>Quick Actions</h3>
+            </div>
+            <div class="quick-actions">
+              <button class="action-chip" data-section-target="timer">Start Focus Session</button>
+              <button class="action-chip" data-section-target="flashcards">Review Flashcards</button>
+              <button class="action-chip" data-section-target="quiz">Take Quiz</button>
+              <button class="action-chip" data-section-target="notes">Capture Note</button>
             </div>
           </article>
         </div>
       </section>
 
-      <section id="study-hub" class="section">
-        <div class="section-header">
-          <h2>Smart Study Hub</h2>
-          <p>Understand, practice, and master every topic.</p>
-        </div>
-        <div class="grid two">
-          <article class="card glass">
-            <h3>AI Study Assistant</h3>
-            <form id="assistantForm">
-              <textarea id="assistantInput" rows="4" placeholder="Ask for explanation, summary, or examples..." required></textarea>
-              <button class="btn primary" type="submit">Get Guidance</button>
-            </form>
-            <div id="assistantOutput" class="output"></div>
-          </article>
-          <article class="card glass">
-            <h3>Topic Breakdown Engine</h3>
-            <form id="topicForm" class="inline-form stack">
-              <input id="topicInput" placeholder="e.g. Photosynthesis" required />
-              <button class="btn primary" type="submit">Break Down Topic</button>
-            </form>
-            <ul id="topicModules" class="list"></ul>
-          </article>
-        </div>
-        <div class="grid two">
-          <article class="card glass">
-            <h3>Flashcard Generator</h3>
-            <form id="flashcardForm" class="inline-form stack">
-              <input id="flashQuestion" placeholder="Question" required />
-              <input id="flashAnswer" placeholder="Answer" required />
-              <button class="btn primary" type="submit">Add Flashcard</button>
-            </form>
-            <div id="flashcardDeck" class="deck"></div>
-          </article>
-          <article class="card glass">
-            <h3>Quiz Builder</h3>
-            <form id="quizForm" class="inline-form stack">
-              <input id="quizTopic" placeholder="Quiz topic" required />
-              <button class="btn primary" type="submit">Generate Quiz</button>
-            </form>
-            <div id="quizArea"></div>
-          </article>
-        </div>
-      </section>
-
-      <section id="productivity" class="section">
-        <div class="section-header">
-          <h2>Productivity & Focus Center</h2>
-          <p>Defeat procrastination with structure.</p>
-        </div>
-        <div class="grid two">
-          <article class="card glass">
-            <h3>Smart Study Planner</h3>
-            <form id="plannerForm" class="inline-form">
-              <input id="plannerTask" placeholder="Task title" required />
-              <input id="plannerDue" type="date" required />
-              <select id="plannerPriority">
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
+      <section id="planner" class="section" aria-label="Planner section">
+        <div class="card glass">
+          <div class="card-header">
+            <h3>Task & Goal Management</h3>
+            <div class="inline-controls">
+              <select id="taskFilter" class="input" aria-label="Filter tasks">
+                <option value="all">All</option>
+                <option value="todo">To Do</option>
+                <option value="done">Done</option>
+                <option value="overdue">Overdue</option>
               </select>
-              <button class="btn primary" type="submit">Add Task</button>
-            </form>
-            <ul id="plannerList" class="list"></ul>
-          </article>
-
-          <article class="card glass">
-            <h3>Focus Timer (Pomodoro)</h3>
-            <p class="hero-number" id="timerDisplay">25:00</p>
-            <div class="inline-form">
-              <input id="focusMinutes" type="number" min="5" max="120" value="25" />
-              <button id="startTimer" class="btn primary">Start</button>
-              <button id="pauseTimer" class="btn ghost">Pause</button>
-              <button id="resetTimer" class="btn ghost">Reset</button>
             </div>
-            <p class="muted">Completed Sessions: <span id="sessionCount">0</span></p>
-          </article>
-        </div>
-        <div class="grid two">
-          <article class="card glass">
-            <h3>Habit Tracker</h3>
-            <form id="habitForm" class="inline-form">
-              <input id="habitName" placeholder="Habit name" required />
-              <button class="btn primary" type="submit">Add Habit</button>
-            </form>
-            <ul id="habitList" class="list"></ul>
-          </article>
-          <article class="card glass">
-            <h3>AI Schedule Optimizer</h3>
-            <button id="optimizeBtn" class="btn primary">Optimize My Day</button>
-            <ul id="optimizerOutput" class="list"></ul>
-          </article>
-        </div>
-      </section>
-
-      <section id="vault" class="section">
-        <div class="section-header">
-          <h2>Knowledge Vault</h2>
-          <p>Your organized academic memory system.</p>
-        </div>
-        <div class="grid two">
-          <article class="card glass">
-            <h3>Notes Workspace</h3>
-            <form id="noteForm" class="inline-form stack">
-              <input id="noteTitle" placeholder="Note title" required />
-              <textarea id="noteBody" rows="6" placeholder="Write structured notes..." required></textarea>
-              <button class="btn primary" type="submit">Save Note</button>
-            </form>
-          </article>
-          <article class="card glass">
-            <h3>Search Notes & Resources</h3>
-            <input id="vaultSearch" placeholder="Search by title or content" />
-            <ul id="noteList" class="list"></ul>
-          </article>
-        </div>
-      </section>
-
-      <section id="analytics" class="section">
-        <div class="section-header">
-          <h2>Performance Analytics</h2>
-          <p>Measure growth and reveal weak points.</p>
-        </div>
-        <div class="grid three">
-          <article class="card glass">
-            <h3>Total Study Hours</h3>
-            <p class="hero-number" id="studyHours">0h</p>
-          </article>
-          <article class="card glass">
-            <h3>Quiz Accuracy</h3>
-            <p class="hero-number" id="quizAccuracy">0%</p>
-          </article>
-          <article class="card glass">
-            <h3>Task Completion</h3>
-            <p class="hero-number" id="taskCompletion">0%</p>
-          </article>
-        </div>
-        <article class="card glass">
-          <h3>Progress Chart</h3>
-          <canvas id="progressChart" width="1000" height="260"></canvas>
-        </article>
-      </section>
-
-      <section id="motivation" class="section">
-        <div class="section-header">
-          <h2>Motivation & Growth Space</h2>
-          <p>Build resilience and momentum.</p>
-        </div>
-        <div class="grid two">
-          <article class="card glass">
-            <h3>Reflection Journal</h3>
-            <form id="journalForm" class="inline-form stack">
-              <textarea id="journalText" rows="5" placeholder="What did you learn today?" required></textarea>
-              <button class="btn primary" type="submit">Save Reflection</button>
-            </form>
-            <ul id="journalList" class="list"></ul>
-          </article>
-          <article class="card glass">
-            <h3>Vision Board</h3>
-            <form id="visionForm" class="inline-form stack">
-              <input id="visionGoal" placeholder="Long-term goal" required />
-              <button class="btn primary" type="submit">Add Goal</button>
-            </form>
-            <ul id="visionList" class="list"></ul>
-          </article>
-        </div>
-      </section>
-
-      <section id="settings" class="section">
-        <div class="section-header">
-          <h2>Settings</h2>
-          <p>Personalize your learning environment.</p>
-        </div>
-        <article class="card glass">
-          <form id="settingsForm" class="inline-form">
-            <input id="studentName" placeholder="Your name" />
-            <select id="studentLevel">
-              <option value="high-school">High School</option>
-              <option value="university">University</option>
-              <option value="self-learner">Self-Learner</option>
-            </select>
-            <button class="btn primary" type="submit">Save Preferences</button>
+          </div>
+          <form id="taskForm" class="form-row">
+            <input id="taskTitle" class="input" type="text" placeholder="Task title" required aria-label="Task title" />
+            <input id="taskDeadline" class="input" type="date" aria-label="Task deadline" />
+            <button class="btn primary" type="submit">Save Task</button>
           </form>
-        </article>
+          <ul id="taskList" class="list"></ul>
+        </div>
+      </section>
+
+      <section id="timer" class="section" aria-label="Pomodoro timer section">
+        <div class="grid-two">
+          <article class="card glass center">
+            <h3>Pomodoro Timer</h3>
+            <div id="timerDisplay" class="timer-display" aria-live="polite">25:00</div>
+            <p id="timerModeLabel" class="subtle">Focus mode</p>
+            <div class="btn-group">
+              <button id="timerStartPause" class="btn primary">Start</button>
+              <button id="timerReset" class="btn ghost">Reset</button>
+              <button id="timerSwitch" class="btn ghost">Switch Mode</button>
+            </div>
+          </article>
+          <article class="card glass">
+            <h3>Settings</h3>
+            <div class="form-grid">
+              <label>Focus (minutes)
+                <input id="focusMinutes" class="input" type="number" min="1" max="120" />
+              </label>
+              <label>Break (minutes)
+                <input id="breakMinutes" class="input" type="number" min="1" max="60" />
+              </label>
+            </div>
+            <button id="saveTimerSettings" class="btn primary">Apply Settings</button>
+            <p class="subtle">Completed pomodoros: <strong id="pomodoroCount">0</strong></p>
+          </article>
+        </div>
+      </section>
+
+      <section id="flashcards" class="section" aria-label="Flashcards section">
+        <div class="grid-two">
+          <article class="card glass">
+            <h3>Decks</h3>
+            <form id="deckForm" class="form-row">
+              <input id="deckName" class="input" type="text" placeholder="New deck name" required />
+              <button class="btn primary" type="submit">Create Deck</button>
+            </form>
+            <ul id="deckList" class="list"></ul>
+          </article>
+          <article class="card glass">
+            <h3 id="activeDeckTitle">Card Studio</h3>
+            <form id="cardForm" class="form-col">
+              <input id="cardFront" class="input" type="text" placeholder="Front side" required />
+              <input id="cardBack" class="input" type="text" placeholder="Back side" required />
+              <button class="btn primary" type="submit">Add Card</button>
+            </form>
+            <div class="flashcard-stage">
+              <button id="prevCard" class="btn ghost small">Prev</button>
+              <div id="flashcard" class="flashcard" tabindex="0" role="button" aria-label="Flashcard, press enter to flip">
+                <div class="flashcard-inner">
+                  <div class="flashcard-face flashcard-front">Select a deck</div>
+                  <div class="flashcard-face flashcard-back">Add cards to begin</div>
+                </div>
+              </div>
+              <button id="nextCard" class="btn ghost small">Next</button>
+            </div>
+            <p id="cardCounter" class="subtle">0 / 0</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="notes" class="section" aria-label="Notes section">
+        <div class="card glass">
+          <div class="card-header">
+            <h3>Notes</h3>
+            <input id="noteSearch" class="input" type="search" placeholder="Search notes..." />
+          </div>
+          <form id="noteForm" class="form-col">
+            <input id="noteTitle" class="input" type="text" placeholder="Note title" required />
+            <textarea id="noteBody" class="input" rows="4" placeholder="Write your thought, summary, or concept..."></textarea>
+            <button class="btn primary" type="submit">Save Note</button>
+          </form>
+          <div id="notesGrid" class="notes-grid"></div>
+        </div>
+      </section>
+
+      <section id="quiz" class="section" aria-label="Quiz section">
+        <div class="card glass">
+          <h3>Quick Quiz Generator</h3>
+          <form id="quizForm" class="form-row">
+            <input id="quizTopic" class="input" type="text" placeholder="Topic (e.g., Biology)" required />
+            <input id="quizQuestion" class="input" type="text" placeholder="Question" required />
+            <input id="quizAnswer" class="input" type="text" placeholder="Correct answer" required />
+            <button class="btn primary" type="submit">Add</button>
+          </form>
+          <div class="quiz-controls">
+            <button id="startQuiz" class="btn ghost">Start Quiz</button>
+            <span id="quizStatus" class="subtle">No active quiz</span>
+          </div>
+          <div id="quizPanel" class="quiz-panel"></div>
+        </div>
+      </section>
+
+      <section id="analytics" class="section" aria-label="Analytics section">
+        <div class="grid-two">
+          <article class="card glass">
+            <h3>Weekly Productivity</h3>
+            <canvas id="weeklyChart" height="170"></canvas>
+          </article>
+          <article class="card glass">
+            <h3>Completion Rate</h3>
+            <canvas id="completionChart" height="170"></canvas>
+          </article>
+        </div>
       </section>
     </main>
   </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
   <script src="script.js"></script>
 </body>
 </html>

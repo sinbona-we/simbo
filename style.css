@@ -1,1152 +1,231 @@
-const storageKey = "simboStudyOS.v1";
-const AI_CONFIG = {
-  provider: "gemini", // "gemini" or "openai"
-  apiKey: "YOUR_API_KEY_HERE",
-  // Optional: set proxy URL if you use your own secure relay.
-  // Example: "https://your-proxy.example.com/v1/chat/completions"
-  proxyUrl: "",
-  geminiModel: "gemini-1.5-flash",
-  openAiModel: "gpt-4o-mini",
-  maxContextMessages: 14
-};
-const defaults = {
-  tasks: [],
-  notes: [],
-  decks: [],
-  sessions: 0,
-  streak: 0,
-  focusMinutes: 25,
-  breakMinutes: 5,
-  pomodoroCount: 0,
-  quizItems: [],
-  weeklyMinutes: [30, 45, 60, 35, 75, 90, 50],
-  activeDeckId: null,
-  profile: {
-    name: "Scholar",
-    goal: "Stay consistent with daily deep work",
-    bio: ""
-  },
-  simbaChat: []
-};
-
-const state = loadState();
-let currentSection = "dashboard";
-let timer = {
-  mode: "focus",
-  remainingSeconds: state.focusMinutes * 60,
-  running: false,
-  intervalId: null
-};
-let quizRun = null;
-let flashcardIndex = 0;
-let toastTimerId = null;
-let simbaRequestInFlight = false;
-
-const els = {
-  sectionTitle: document.getElementById("sectionTitle"),
-  userNameDisplay: document.getElementById("userNameDisplay"),
-  userGoalDisplay: document.getElementById("userGoalDisplay"),
-  navMenu: document.getElementById("navMenu"),
-  sections: document.querySelectorAll(".section"),
-  navBtns: document.querySelectorAll(".nav-btn"),
-  quickSectionButtons: document.querySelectorAll("[data-section-target]"),
-  focusModeToggle: document.getElementById("focusModeToggle"),
-  globalSearch: document.getElementById("globalSearch"),
-  openProfileBtn: document.getElementById("openProfileBtn"),
-  quickAddTask: document.getElementById("quickAddTask"),
-  profileModal: document.getElementById("profileModal"),
-  closeProfileBtn: document.getElementById("closeProfileBtn"),
-  profileForm: document.getElementById("profileForm"),
-  profileName: document.getElementById("profileName"),
-  profileGoal: document.getElementById("profileGoal"),
-  profileBio: document.getElementById("profileBio"),
-  profileAvatarPreview: document.getElementById("profileAvatarPreview"),
-  toast: document.getElementById("toast"),
-  taskForm: document.getElementById("taskForm"),
-  taskTitle: document.getElementById("taskTitle"),
-  taskDeadline: document.getElementById("taskDeadline"),
-  taskFilter: document.getElementById("taskFilter"),
-  taskList: document.getElementById("taskList"),
-  todayAgenda: document.getElementById("todayAgenda"),
-  kpiStreak: document.getElementById("kpiStreak"),
-  kpiSessions: document.getElementById("kpiSessions"),
-  kpiHours: document.getElementById("kpiHours"),
-  kpiGoals: document.getElementById("kpiGoals"),
-  timerDisplay: document.getElementById("timerDisplay"),
-  timerModeLabel: document.getElementById("timerModeLabel"),
-  timerStartPause: document.getElementById("timerStartPause"),
-  timerReset: document.getElementById("timerReset"),
-  timerSwitch: document.getElementById("timerSwitch"),
-  focusMinutes: document.getElementById("focusMinutes"),
-  breakMinutes: document.getElementById("breakMinutes"),
-  saveTimerSettings: document.getElementById("saveTimerSettings"),
-  pomodoroCount: document.getElementById("pomodoroCount"),
-  deckForm: document.getElementById("deckForm"),
-  deckName: document.getElementById("deckName"),
-  deckList: document.getElementById("deckList"),
-  activeDeckTitle: document.getElementById("activeDeckTitle"),
-  cardForm: document.getElementById("cardForm"),
-  cardFront: document.getElementById("cardFront"),
-  cardBack: document.getElementById("cardBack"),
-  flashcard: document.getElementById("flashcard"),
-  prevCard: document.getElementById("prevCard"),
-  nextCard: document.getElementById("nextCard"),
-  cardCounter: document.getElementById("cardCounter"),
-  noteForm: document.getElementById("noteForm"),
-  noteTitle: document.getElementById("noteTitle"),
-  noteBody: document.getElementById("noteBody"),
-  noteSearch: document.getElementById("noteSearch"),
-  notesGrid: document.getElementById("notesGrid"),
-  quizForm: document.getElementById("quizForm"),
-  quizTopic: document.getElementById("quizTopic"),
-  quizQuestion: document.getElementById("quizQuestion"),
-  quizAnswer: document.getElementById("quizAnswer"),
-  startQuiz: document.getElementById("startQuiz"),
-  quizStatus: document.getElementById("quizStatus"),
-  quizPanel: document.getElementById("quizPanel"),
-  weeklyChart: document.getElementById("weeklyChart"),
-  completionChart: document.getElementById("completionChart"),
-  simbaFab: document.getElementById("simbaFab"),
-  simbaBackdrop: document.getElementById("simbaBackdrop"),
-  simbaPanel: document.getElementById("simbaPanel"),
-  simbaForm: document.getElementById("simbaForm"),
-  simbaInput: document.getElementById("simbaInput"),
-  simbaSend: document.querySelector("#simbaForm button[type='submit']"),
-  simbaMessages: document.getElementById("simbaMessages"),
-  simbaTyping: document.getElementById("simbaTyping"),
-  simbaClose: document.getElementById("simbaClose"),
-  simbaClear: document.getElementById("simbaClear")
-};
-
-bootstrap();
-
-function bootstrap() {
-  bindNavigation();
-  bindPlanner();
-  bindTimer();
-  bindFlashcards();
-  bindNotes();
-  bindQuiz();
-  bindProfile();
-  bindSimba();
-  bindGlobalControls();
-  bindMicroInteractions();
-  renderAll();
-  requestAnimationFrame(() => {
-    document.body.classList.add("ready");
-  });
+:root {
+  --bg-top: #0b0b1a;
+  --bg-bottom: #1a0a2e;
+  --card: #1e1e2e;
+  --card-soft: #252545;
+  --text: #ffffff;
+  --text-soft: #e0e0ff;
+  --muted: #a0a0c0;
+  --orange: #ff8c42;
+  --cyan: #00e5ff;
+  --purple: #8b5cf6;
+  --pink: #ff6b9d;
+  --green: #4ade80;
 }
 
-function bindNavigation() {
-  els.navMenu.addEventListener("click", (event) => {
-    const btn = event.target.closest(".nav-btn");
-    if (!btn) {
-      return;
-    }
-    openSection(btn.dataset.section);
-  });
+* { box-sizing: border-box; }
 
-  els.quickSectionButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      openSection(btn.dataset.sectionTarget);
-    });
-  });
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Rubik", "Inter", sans-serif;
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+  color: var(--text);
 }
 
-function bindPlanner() {
-  els.taskForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const title = els.taskTitle.value.trim();
-    if (!title) {
-      return;
-    }
-    const task = {
-      id: crypto.randomUUID(),
-      title,
-      deadline: els.taskDeadline.value || null,
-      done: false,
-      createdAt: Date.now()
-    };
-    state.tasks.unshift(task);
-    els.taskForm.reset();
-    persist();
-    renderPlanner();
-    renderDashboard();
-    renderAnalytics();
-    showToast("Task added");
-  });
+body { overflow-x: hidden; }
 
-  els.taskFilter.addEventListener("change", renderPlanner);
-  els.taskList.addEventListener("click", (event) => {
-    const item = event.target.closest("[data-task-id]");
-    if (!item) {
-      return;
-    }
-    const taskId = item.dataset.taskId;
-    const task = state.tasks.find((entry) => entry.id === taskId);
-    if (!task) {
-      return;
-    }
-    if (event.target.matches("[data-action='toggle']")) {
-      task.done = !task.done;
-      persist();
-      renderPlanner();
-      renderDashboard();
-      renderAnalytics();
-      return;
-    }
-    if (event.target.matches("[data-action='delete']")) {
-      state.tasks = state.tasks.filter((entry) => entry.id !== taskId);
-      persist();
-      renderPlanner();
-      renderDashboard();
-      renderAnalytics();
-      showToast("Task removed");
-    }
-  });
+.bg-layer { position: fixed; inset: 0; pointer-events: none; z-index: -3; }
+.bg-layer-1 {
+  background: linear-gradient(180deg, #0b0b1a 0%, #1a0a2e 100%);
+}
+.bg-layer-2 {
+  background-image: linear-gradient(135deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.12;
+}
+.bg-layer-orb-purple {
+  z-index: -2;
+  background: radial-gradient(circle at 88% 12%, rgba(139, 92, 246, 0.45), transparent 36%);
+}
+.bg-layer-orb-cyan {
+  z-index: -2;
+  background: radial-gradient(circle at 30% 86%, rgba(0, 229, 255, 0.28), transparent 34%);
 }
 
-function bindTimer() {
-  els.focusMinutes.value = state.focusMinutes;
-  els.breakMinutes.value = state.breakMinutes;
-  updateTimerDisplay();
-  els.pomodoroCount.textContent = String(state.pomodoroCount);
-
-  els.timerStartPause.addEventListener("click", () => {
-    timer.running = !timer.running;
-    els.timerStartPause.textContent = timer.running ? "Pause" : "Start";
-    if (timer.running) {
-      timer.intervalId = window.setInterval(tickTimer, 1000);
-      state.sessions += 1;
-      persist();
-      renderDashboard();
-    } else {
-      clearTimerInterval();
-    }
-  });
-
-  els.timerReset.addEventListener("click", () => {
-    clearTimerInterval();
-    timer.running = false;
-    els.timerStartPause.textContent = "Start";
-    timer.remainingSeconds = activeDurationMinutes() * 60;
-    updateTimerDisplay();
-  });
-
-  els.timerSwitch.addEventListener("click", () => {
-    clearTimerInterval();
-    timer.running = false;
-    els.timerStartPause.textContent = "Start";
-    timer.mode = timer.mode === "focus" ? "break" : "focus";
-    timer.remainingSeconds = activeDurationMinutes() * 60;
-    updateTimerDisplay();
-  });
-
-  els.saveTimerSettings.addEventListener("click", () => {
-    const focus = Number(els.focusMinutes.value);
-    const brk = Number(els.breakMinutes.value);
-    if (!Number.isFinite(focus) || !Number.isFinite(brk) || focus < 1 || brk < 1) {
-      showToast("Enter valid timer values");
-      return;
-    }
-    state.focusMinutes = focus;
-    state.breakMinutes = brk;
-    if (!timer.running) {
-      timer.remainingSeconds = activeDurationMinutes() * 60;
-      updateTimerDisplay();
-    }
-    persist();
-    showToast("Timer settings saved");
-  });
+.mobile-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  max-width: 420px;
+  margin: 0 auto 94px;
 }
 
-function bindFlashcards() {
-  els.deckForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const name = els.deckName.value.trim();
-    if (!name) {
-      return;
-    }
-    const deck = {
-      id: crypto.randomUUID(),
-      name,
-      cards: []
-    };
-    state.decks.push(deck);
-    state.activeDeckId = deck.id;
-    els.deckForm.reset();
-    flashcardIndex = 0;
-    persist();
-    renderFlashcards();
-    showToast("Deck created");
-  });
+.section { display: none; gap: 14px; }
+.section.active { display: grid; animation: fade-in .24s ease; }
+@keyframes fade-in { from { opacity: 0; transform: scale(.97);} to {opacity:1;transform:scale(1);} }
 
-  els.deckList.addEventListener("click", (event) => {
-    const row = event.target.closest("[data-deck-id]");
-    if (!row) {
-      return;
-    }
-    const deckId = row.dataset.deckId;
-    if (event.target.matches("[data-action='open']")) {
-      state.activeDeckId = deckId;
-      flashcardIndex = 0;
-      persist();
-      renderFlashcards();
-      return;
-    }
-    if (event.target.matches("[data-action='delete']")) {
-      state.decks = state.decks.filter((deck) => deck.id !== deckId);
-      if (state.activeDeckId === deckId) {
-        state.activeDeckId = state.decks[0]?.id || null;
-        flashcardIndex = 0;
-      }
-      persist();
-      renderFlashcards();
-      showToast("Deck deleted");
-    }
-  });
-
-  els.cardForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const activeDeck = getActiveDeck();
-    if (!activeDeck) {
-      showToast("Create or select a deck first");
-      return;
-    }
-    const front = els.cardFront.value.trim();
-    const back = els.cardBack.value.trim();
-    if (!front || !back) {
-      return;
-    }
-    activeDeck.cards.push({
-      id: crypto.randomUUID(),
-      front,
-      back
-    });
-    els.cardForm.reset();
-    flashcardIndex = Math.max(0, activeDeck.cards.length - 1);
-    persist();
-    renderFlashcards();
-    showToast("Card added");
-  });
-
-  els.prevCard.addEventListener("click", () => {
-    const activeDeck = getActiveDeck();
-    if (!activeDeck || activeDeck.cards.length === 0) {
-      return;
-    }
-    flashcardIndex = (flashcardIndex - 1 + activeDeck.cards.length) % activeDeck.cards.length;
-    renderFlashcardFace();
-  });
-
-  els.nextCard.addEventListener("click", () => {
-    const activeDeck = getActiveDeck();
-    if (!activeDeck || activeDeck.cards.length === 0) {
-      return;
-    }
-    flashcardIndex = (flashcardIndex + 1) % activeDeck.cards.length;
-    renderFlashcardFace();
-  });
-
-  els.flashcard.addEventListener("click", () => {
-    els.flashcard.classList.toggle("flipped");
-  });
-
-  els.flashcard.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      els.flashcard.classList.toggle("flipped");
-    }
-  });
+.header-row { display:flex; justify-content:space-between; align-items:center; }
+.greeting-title {
+  margin: 0;
+  font-family: "Nunito", "Inter", sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+.header-actions { display:flex; gap: 10px; align-items:center; }
+.icon-btn {
+  border: 0; background: #2a2a45; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor:pointer;
+}
+.avatar-chip { position:relative; border:0; background:transparent; padding:0; cursor:pointer; }
+.avatar-mini {
+  width: 36px; height: 36px; border-radius: 50%; display:grid; place-items:center; font-weight: 700;
+  border: 2px solid var(--orange); background: #2a2a45;
+}
+.status-dot {
+  position:absolute; width:8px; height:8px; border-radius:50%; background:var(--green); right: 2px; bottom: 2px;
 }
 
-function bindNotes() {
-  els.noteForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const title = els.noteTitle.value.trim();
-    const body = els.noteBody.value.trim();
-    if (!title) {
-      return;
-    }
-    const note = {
-      id: crypto.randomUUID(),
-      title,
-      body,
-      createdAt: Date.now()
-    };
-    state.notes.unshift(note);
-    els.noteForm.reset();
-    persist();
-    renderNotes();
-    showToast("Note saved");
-  });
+.streak-pill {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding: 14px 20px; border-radius: 16px;
+  background: linear-gradient(135deg, var(--pink), var(--orange));
+  box-shadow: 0 8px 30px rgba(255, 107, 157, 0.4);
+}
+.streak-pill h2 {
+  margin:0; font-family:"Nunito",sans-serif; font-size:18px; font-weight:800;
+}
+.streak-pill p { margin:2px 0 0; font-size:11px; color: rgba(255,255,255,0.85); }
+.big-emoji { font-size: 28px; }
 
-  els.noteSearch.addEventListener("input", renderNotes);
-  els.notesGrid.addEventListener("click", (event) => {
-    const row = event.target.closest("[data-note-id]");
-    if (!row) {
-      return;
-    }
-    if (!event.target.matches("[data-action='delete']")) {
-      return;
-    }
-    const id = row.dataset.noteId;
-    state.notes = state.notes.filter((note) => note.id !== id);
-    persist();
-    renderNotes();
-    showToast("Note removed");
-  });
+.stats-grid {
+  display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px;
+}
+.stat-card {
+  background: var(--card); border-radius: 16px; padding: 14px;
+  border-top: 3px solid transparent;
+  box-shadow: inset 0 -12px 20px rgba(0,0,0,0.16);
+}
+.accent-orange { border-top-color: var(--orange); box-shadow: 0 4px 20px rgba(255, 140, 66, .25); }
+.accent-green { border-top-color: var(--green); box-shadow: 0 4px 20px rgba(74, 222, 128, .18); }
+.accent-purple { border-top-color: var(--purple); box-shadow: 0 4px 20px rgba(138, 43, 226, .3); }
+.accent-cyan { border-top-color: var(--cyan); box-shadow: 0 4px 20px rgba(0, 200, 255, .2); }
+.stat-card p { margin: 0; color: #9090b0; font-size: 10px; letter-spacing: .1em; }
+.stat-card h3 { margin: 8px 0; font-family: "Nunito", sans-serif; font-size: 28px; font-weight: 800; }
+.stat-card small { color:#9090b0; font-size:10px; letter-spacing: .08em; }
+
+.profile-level-card, .weekly-card, .quote-card, .app-card, .simba-panel, .profile-modal {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 14px;
 }
 
-function bindQuiz() {
-  els.quizForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const topic = els.quizTopic.value.trim();
-    const question = els.quizQuestion.value.trim();
-    const answer = els.quizAnswer.value.trim();
-    if (!topic || !question || !answer) {
-      return;
-    }
-    state.quizItems.push({
-      id: crypto.randomUUID(),
-      topic,
-      question,
-      answer
-    });
-    els.quizForm.reset();
-    persist();
-    renderQuiz();
-    showToast("Quiz item added");
-  });
+.profile-head { display:flex; gap:12px; align-items:center; }
+.avatar-large { width:48px; height:48px; border-radius:50%; display:grid; place-items:center; font-weight:800; background:#2a2a45; border:2px solid var(--orange); }
+.profile-head h3 { margin: 0; font-family: "Nunito", sans-serif; }
+.profile-head p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+.level-badge { margin-left:auto; background: linear-gradient(135deg, var(--purple), var(--pink)); border-radius:999px; padding:6px 10px; font-size:12px; }
+.xp-track { height: 6px; border-radius: 4px; background:#2a2a45; margin-top: 12px; overflow:hidden; }
+.xp-fill { height:100%; width:12%; background: linear-gradient(90deg, var(--purple), var(--pink)); }
+.xp-meta { margin:8px 0 0; color:var(--muted); font-size:12px; display:flex; justify-content:space-between; }
 
-  els.startQuiz.addEventListener("click", () => {
-    if (state.quizItems.length === 0) {
-      showToast("Add quiz items first");
-      return;
-    }
-    const shuffled = [...state.quizItems].sort(() => Math.random() - 0.5).slice(0, 5);
-    quizRun = {
-      index: 0,
-      score: 0,
-      items: shuffled
-    };
-    renderQuizRun();
-  });
+.focus-cta {
+  border:0; border-radius: 20px; color:#fff; width:100%; text-align:left; padding:16px;
+  background: linear-gradient(135deg, #2e3eff, #8b5cf6);
+  display:flex; gap:12px; align-items:center; box-shadow: 0 4px 30px rgba(100,100,255,.4); cursor:pointer;
+}
+.focus-cta span { width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.2); display:grid; place-items:center; }
+.focus-cta p { margin:2px 0 0; color:#e6dcff; font-size:12px; }
 
-  els.quizPanel.addEventListener("click", (event) => {
-    if (!quizRun) {
-      return;
-    }
-    const btn = event.target.closest("[data-answer]");
-    if (!btn) {
-      return;
-    }
-    const current = quizRun.items[quizRun.index];
-    const answer = btn.dataset.answer;
-    if (answer === current.answer) {
-      quizRun.score += 1;
-    }
-    quizRun.index += 1;
-    if (quizRun.index >= quizRun.items.length) {
-      const result = quizRun;
-      quizRun = null;
-      els.quizStatus.textContent = `Score ${result.score}/${result.items.length}`;
-      els.quizPanel.innerHTML = `<p>Done. You scored <strong>${result.score}/${result.items.length}</strong>.</p>`;
-      return;
-    }
-    renderQuizRun();
-  });
+.action-stack { display:grid; gap:10px; }
+.action-pill {
+  width:100%; border-radius:30px; border:1px solid rgba(255,255,255,.09); background:#2a2a45;
+  padding:16px 18px; color:#fff; text-align:left; font-family:"Nunito",sans-serif; font-size:15px; font-weight:700; cursor:pointer;
+}
+.action-pill.ai { box-shadow: inset 0 0 0 1px rgba(139,92,246,.5);}
+.action-pill.quiz { box-shadow: inset 0 0 0 1px rgba(255,140,66,.5);}
+.action-pill.note { box-shadow: inset 0 0 0 1px rgba(0,229,255,.5);}
+.action-pill.flash { box-shadow: inset 0 0 0 1px rgba(255,107,157,.5);}
+
+.micro-label { margin:0; color:#9090b0; font-size:10px; letter-spacing:.12em; }
+.weekly-card h3 { margin:6px 0 10px; font-family:"Nunito"; font-size:28px; }
+.week-bars { display:flex; align-items:flex-end; gap:8px; height:72px; }
+.week-bars span { flex:1; background:#8b5cf6; border-radius:8px 8px 4px 4px; display:block; }
+
+.quote-card { background:#252545; color:#d5cff7; font-style:italic; }
+.quote-card p { margin:0; }
+
+.app-card h3 { margin: 0 0 12px; font-family:"Nunito"; }
+.stack-form { display:grid; gap:10px; margin-bottom:10px; }
+.input, textarea, select {
+  width:100%; border:1px solid rgba(255,255,255,.08); background:#2a2a45; color:#fff; border-radius:14px; padding:12px;
+}
+.btn {
+  border-radius: 14px; border:1px solid rgba(255,255,255,.1); background:#2a2a45; color:#fff; padding:10px 12px; cursor:pointer;
+}
+.btn.primary { border:none; background: linear-gradient(135deg, var(--purple), var(--pink)); }
+.btn-group { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:10px;}
+.list { list-style:none; padding:0; margin:0; display:grid; gap:8px; }
+.list-item { background:#2a2a45; border-radius:14px; padding:10px; display:flex; justify-content:space-between; gap:8px; }
+.task-meta { display:flex; gap:6px; flex-wrap:wrap; }
+.badge { border-radius:999px; padding:2px 8px; font-size:10px; }
+.badge.success{color:var(--green)} .badge.warn{color:var(--orange)} .badge.danger{color:var(--pink)}
+.subtle { color:var(--muted); font-size:12px; }
+.center { text-align:center; }
+.timer-display { font-family:"Nunito"; font-size:48px; font-weight:800; margin:8px 0; }
+.flashcard-stage { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; }
+.flashcard { min-height:130px; perspective:1000px; }
+.flashcard-inner { min-height:130px; position:relative; transform-style:preserve-3d; transition:transform .45s ease; }
+.flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+.flashcard-face { position:absolute; inset:0; border-radius:14px; background:#2a2a45; display:grid; place-items:center; backface-visibility:hidden; padding:12px; }
+.flashcard-back { transform:rotateY(180deg); }
+.notes-grid { display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+.note-card { background:#2a2a45; border-radius:14px; padding:10px; }
+.quiz-panel { background:#2a2a45; border-radius:14px; padding:12px; margin-top:10px; }
+.quiz-options { display:grid; gap:8px; }
+.quiz-controls { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+
+.watermark {
+  position: fixed; right: 14px; bottom: 82px; font-size: 11px; opacity: .24; letter-spacing: .08em;
 }
 
-function bindGlobalControls() {
-  els.quickAddTask.addEventListener("click", () => {
-    openSection("planner");
-    els.taskTitle.focus();
-  });
-
-  els.focusModeToggle.addEventListener("click", () => {
-    const active = document.body.classList.toggle("focus-mode");
-    els.focusModeToggle.textContent = active ? "Exit Focus Mode" : "Enter Focus Mode";
-    els.focusModeToggle.setAttribute("aria-pressed", active ? "true" : "false");
-  });
-
-  els.globalSearch.addEventListener("input", () => {
-    const query = els.globalSearch.value.trim().toLowerCase();
-    if (!query) {
-      return;
-    }
-    if (state.tasks.some((task) => task.title.toLowerCase().includes(query))) {
-      openSection("planner");
-      return;
-    }
-    if (state.notes.some((note) => `${note.title} ${note.body}`.toLowerCase().includes(query))) {
-      openSection("notes");
-      return;
-    }
-    if (state.decks.some((deck) => deck.name.toLowerCase().includes(query))) {
-      openSection("flashcards");
-      return;
-    }
-  });
+.bottom-nav {
+  position: fixed; left:0; right:0; bottom:0; z-index:70;
+  background:#12122a; border-top:1px solid rgba(255,255,255,.08);
+  padding:10px 20px 18px; display:grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap:8px;
+}
+.bottom-nav .nav-btn {
+  border:0; background:transparent; color:#606080; display:grid; justify-items:center; gap:4px; cursor:pointer; font-size:18px; position:relative;
+}
+.bottom-nav .nav-btn span { font-size:10px; }
+.bottom-nav .nav-btn.active { color:#fff; }
+.bottom-nav .nav-btn.active::before {
+  content:""; width:18px; height:4px; border-radius:999px; background:var(--orange); position:absolute; top:-6px;
 }
 
-function bindProfile() {
-  els.openProfileBtn.addEventListener("click", openProfileModal);
-  els.closeProfileBtn.addEventListener("click", closeProfileModal);
-  els.profileModal.addEventListener("click", (event) => {
-    if (event.target === els.profileModal) {
-      closeProfileModal();
-    }
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeProfileModal();
-      closeSimbaPanel();
-    }
-  });
-  els.profileForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const name = els.profileName.value.trim() || "Scholar";
-    const goal = els.profileGoal.value.trim() || "Stay consistent with daily deep work";
-    const bio = els.profileBio.value.trim();
-    state.profile = { name, goal, bio };
-    persist();
-    renderProfile();
-    closeProfileModal();
-    showToast("Profile saved");
-  });
+.modal-overlay { position:fixed; inset:0; background:rgba(5,5,14,.65); display:grid; place-items:center; opacity:0; pointer-events:none; transition:.2s; z-index:90; }
+.modal-overlay.open { opacity:1; pointer-events:auto; }
+.profile-modal { width:min(420px, calc(100% - 20px)); transform:scale(.96); transition:.2s; }
+.modal-overlay.open .profile-modal { transform:scale(1); }
+.profile-avatar { width:84px; height:84px; border-radius:50%; background:#2a2a45; border:2px solid var(--orange); display:grid; place-items:center; margin:2px auto 12px; font-family:"Nunito"; font-size:28px; }
+.card-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+
+.simba-backdrop { position:fixed; inset:0; backdrop-filter:blur(3px); background:rgba(4,4,13,.35); opacity:0; pointer-events:none; transition:.2s; z-index:94; }
+.simba-backdrop.open { opacity:1; pointer-events:auto; }
+.simba-fab {
+  position:fixed; right:14px; bottom:86px; width:56px; height:56px; border-radius:50%; border:0;
+  color:#fff; font-family:"Nunito"; font-weight:800; background:linear-gradient(135deg, var(--orange), var(--pink));
+  box-shadow:0 8px 26px rgba(255,107,157,.45); z-index:95; cursor:pointer;
 }
-
-function bindSimba() {
-  els.simbaFab.addEventListener("click", () => {
-    const willOpen = !els.simbaPanel.classList.contains("open");
-    if (willOpen) {
-      openSimbaPanel();
-    } else {
-      closeSimbaPanel();
-    }
-  });
-  els.simbaClose.addEventListener("click", closeSimbaPanel);
-  els.simbaBackdrop.addEventListener("click", closeSimbaPanel);
-  els.simbaClear.addEventListener("click", () => {
-    state.simbaChat = [];
-    persist();
-    renderSimbaMessages();
-    addAssistantMessage("Chat cleared. I am ready to help you study with a focused strategy.");
-  });
-  els.simbaForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (simbaRequestInFlight) {
-      return;
-    }
-    const text = els.simbaInput.value.trim();
-    if (!text) {
-      return;
-    }
-    addUserMessage(text);
-    els.simbaInput.value = "";
-    setSimbaLoading(true);
-    try {
-      const answer = await requestSimbaReply();
-      addAssistantMessage(answer);
-    } catch {
-      addAssistantMessage("Simba is temporarily unavailable. Please try again.");
-    } finally {
-      setSimbaLoading(false);
-    }
-  });
+.simba-panel {
+  position:fixed; right:10px; bottom:150px; width:min(390px, calc(100% - 20px)); z-index:95;
+  opacity:0; transform:translateY(8px) scale(.98); pointer-events:none; transition:.2s;
+  display:grid; grid-template-rows:auto 1fr auto auto; gap:10px;
 }
+.simba-panel.open { opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+.simba-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.eyebrow { margin:0; font-size:10px; letter-spacing:.08em; color:#a0a0c0; text-transform:uppercase;}
+.simba-header h3 { margin:2px 0 0; font-family:"Nunito"; }
+.simba-online-dot { width:8px; height:8px; border-radius:50%; background:var(--green); display:inline-block; margin-left:5px; }
+.simba-messages { min-height:180px; max-height:36vh; overflow:auto; display:grid; gap:8px; }
+.simba-bubble { max-width:88%; padding:10px; border-radius:14px; background:#2a2a45; font-size:13px; line-height:1.4; }
+.simba-bubble.user { margin-left:auto; background:rgba(139,92,246,.3); }
+.simba-form { display:grid; grid-template-columns:1fr auto; gap:8px; }
+.simba-typing { font-size:12px; color:#b2b2d5; opacity:0; min-height:16px; }
+.simba-typing.show { opacity:1; }
 
-function bindMicroInteractions() {
-  const cards = document.querySelectorAll(".card-elevated, .metric-card, .hero");
-  cards.forEach((card) => {
-    card.addEventListener("mousemove", (event) => {
-      const rect = card.getBoundingClientRect();
-      const px = (event.clientX - rect.left) / rect.width;
-      const py = (event.clientY - rect.top) / rect.height;
-      card.style.setProperty("--mx", `${px}`);
-      card.style.setProperty("--my", `${py}`);
-    });
-    card.addEventListener("mouseleave", () => {
-      card.style.removeProperty("--mx");
-      card.style.removeProperty("--my");
-    });
-  });
+.toast {
+  position:fixed; right:12px; bottom:12px; z-index:120; background:#252545; color:#fff; border-radius:12px; padding:10px 12px; opacity:0; transform:translateY(10px); transition:.2s;
 }
-
-function renderAll() {
-  renderProfile();
-  renderDashboard();
-  renderPlanner();
-  renderTimer();
-  renderFlashcards();
-  renderNotes();
-  renderQuiz();
-  renderAnalytics();
-  renderSimbaMessages();
-}
-
-function renderDashboard() {
-  els.kpiStreak.textContent = `${state.streak} days`;
-  els.kpiSessions.textContent = String(state.sessions);
-  const hours = (state.weeklyMinutes.reduce((sum, min) => sum + min, 0) / 60).toFixed(1);
-  els.kpiHours.textContent = `${hours}h`;
-  els.kpiGoals.textContent = String(state.tasks.filter((task) => !task.done).length);
-
-  const agendaItems = state.tasks
-    .filter((task) => !task.done)
-    .sort((a, b) => Number(new Date(a.deadline || "2999-12-31")) - Number(new Date(b.deadline || "2999-12-31")))
-    .slice(0, 5);
-
-  els.todayAgenda.innerHTML = agendaItems.length
-    ? agendaItems
-        .map((task) => {
-          const deadline = task.deadline ? new Date(task.deadline).toLocaleDateString() : "No deadline";
-          return `<li class="list-item"><span>${escapeHtml(task.title)}</span><small>${deadline}</small></li>`;
-        })
-        .join("")
-    : '<li class="list-item"><span>No tasks yet. Add one in Planner.</span></li>';
-}
-
-function renderPlanner() {
-  const filter = els.taskFilter.value;
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const visibleTasks = state.tasks.filter((task) => {
-    if (filter === "todo") {
-      return !task.done;
-    }
-    if (filter === "done") {
-      return task.done;
-    }
-    if (filter === "overdue") {
-      if (!task.deadline || task.done) {
-        return false;
-      }
-      return new Date(task.deadline) < now;
-    }
-    return true;
-  });
-
-  els.taskList.innerHTML = visibleTasks.length
-    ? visibleTasks
-        .map((task) => {
-          const isOverdue = Boolean(task.deadline && !task.done && new Date(task.deadline) < now);
-          const due = task.deadline ? new Date(task.deadline).toLocaleDateString() : "No deadline";
-          const badge = task.done ? "success" : isOverdue ? "danger" : "warn";
-          const label = task.done ? "Done" : isOverdue ? "Overdue" : "Active";
-          return `
-            <li class="list-item" data-task-id="${task.id}">
-              <div>
-                <strong>${escapeHtml(task.title)}</strong>
-                <div class="task-meta">
-                  <small>${due}</small>
-                  <span class="badge ${badge}">${label}</span>
-                </div>
-              </div>
-              <div class="inline-controls">
-                <button class="btn small ghost" data-action="toggle">${task.done ? "Undo" : "Done"}</button>
-                <button class="btn small ghost" data-action="delete">Delete</button>
-              </div>
-            </li>`;
-        })
-        .join("")
-    : '<li class="list-item"><span>No tasks in this view.</span></li>';
-}
-
-function renderTimer() {
-  updateTimerDisplay();
-  els.timerModeLabel.textContent = timer.mode === "focus" ? "Focus mode" : "Break mode";
-  els.pomodoroCount.textContent = String(state.pomodoroCount);
-}
-
-function renderFlashcards() {
-  const activeDeck = getActiveDeck();
-  els.deckList.innerHTML = state.decks.length
-    ? state.decks
-        .map((deck) => {
-          const selected = deck.id === state.activeDeckId ? " (active)" : "";
-          return `
-            <li class="list-item" data-deck-id="${deck.id}">
-              <div>
-                <strong>${escapeHtml(deck.name)}${selected}</strong>
-                <small>${deck.cards.length} cards</small>
-              </div>
-              <div class="inline-controls">
-                <button class="btn small ghost" data-action="open">Open</button>
-                <button class="btn small ghost" data-action="delete">Delete</button>
-              </div>
-            </li>`;
-        })
-        .join("")
-    : '<li class="list-item"><span>No decks yet.</span></li>';
-
-  els.activeDeckTitle.textContent = activeDeck ? `Card Studio - ${activeDeck.name}` : "Card Studio";
-  if (activeDeck && flashcardIndex >= activeDeck.cards.length) {
-    flashcardIndex = Math.max(0, activeDeck.cards.length - 1);
-  }
-  renderFlashcardFace();
-}
-
-function renderFlashcardFace() {
-  const activeDeck = getActiveDeck();
-  const frontEl = els.flashcard.querySelector(".flashcard-front");
-  const backEl = els.flashcard.querySelector(".flashcard-back");
-  els.flashcard.classList.remove("flipped");
-  if (!activeDeck || activeDeck.cards.length === 0) {
-    frontEl.textContent = activeDeck ? "Add cards to begin" : "Select a deck";
-    backEl.textContent = "Create your first flashcard";
-    els.cardCounter.textContent = "0 / 0";
-    return;
-  }
-  const card = activeDeck.cards[flashcardIndex];
-  frontEl.textContent = card.front;
-  backEl.textContent = card.back;
-  els.cardCounter.textContent = `${flashcardIndex + 1} / ${activeDeck.cards.length}`;
-}
-
-function renderNotes() {
-  const query = els.noteSearch.value.trim().toLowerCase();
-  const filtered = state.notes.filter((note) => {
-    if (!query) {
-      return true;
-    }
-    return `${note.title} ${note.body}`.toLowerCase().includes(query);
-  });
-  els.notesGrid.innerHTML = filtered.length
-    ? filtered
-        .map((note) => {
-          return `
-            <article class="note-card" data-note-id="${note.id}">
-              <h4>${escapeHtml(note.title)}</h4>
-              <p>${escapeHtml(note.body || "No content")}</p>
-              <div class="inline-controls" style="margin-top: 8px;">
-                <button class="btn small ghost" data-action="delete">Delete</button>
-              </div>
-            </article>`;
-        })
-        .join("")
-    : '<p class="subtle">No notes found.</p>';
-}
-
-function renderQuiz() {
-  els.quizStatus.textContent = state.quizItems.length ? `${state.quizItems.length} questions ready` : "No active quiz";
-  if (!quizRun) {
-    els.quizPanel.innerHTML = state.quizItems.length
-      ? "<p>Select <strong>Start Quiz</strong> to begin.</p>"
-      : "<p>Add at least one question to run a quiz.</p>";
-  }
-}
-
-function renderQuizRun() {
-  if (!quizRun) {
-    return;
-  }
-  const current = quizRun.items[quizRun.index];
-  const options = buildQuizOptions(current.answer);
-  els.quizStatus.textContent = `Question ${quizRun.index + 1}/${quizRun.items.length}`;
-  els.quizPanel.innerHTML = `
-    <p><strong>${escapeHtml(current.topic)}</strong></p>
-    <p>${escapeHtml(current.question)}</p>
-    <div class="quiz-options">
-      ${options.map((option) => `<button class="btn ghost" data-answer="${escapeHtmlAttr(option)}">${escapeHtml(option)}</button>`).join("")}
-    </div>
-  `;
-}
-
-function renderAnalytics() {
-  const completed = state.tasks.filter((task) => task.done).length;
-  const total = state.tasks.length;
-  const pending = Math.max(total - completed, 0);
-  const completionRate = total ? Math.round((completed / total) * 100) : 0;
-
-  destroyChart(els.weeklyChart);
-  destroyChart(els.completionChart);
-
-  if (typeof Chart !== "undefined") {
-    new Chart(els.weeklyChart, {
-      type: "line",
-      data: {
-        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-        datasets: [
-          {
-            label: "Minutes",
-            data: state.weeklyMinutes,
-            borderColor: "#7aa0ff",
-            backgroundColor: "rgba(122, 160, 255, 0.2)",
-            tension: 0.35,
-            fill: true
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          legend: { labels: { color: "#d9e4ff" } }
-        },
-        scales: {
-          x: { ticks: { color: "#a9bcf7" }, grid: { color: "rgba(151, 173, 255, 0.08)" } },
-          y: { ticks: { color: "#a9bcf7" }, grid: { color: "rgba(151, 173, 255, 0.08)" } }
-        }
-      }
-    });
-
-    new Chart(els.completionChart, {
-      type: "doughnut",
-      data: {
-        labels: [`Done ${completionRate}%`, "Pending"],
-        datasets: [
-          {
-            data: [completed, pending || 1],
-            backgroundColor: ["#49d88a", "#2f3f75"]
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          legend: { labels: { color: "#d9e4ff" } }
-        }
-      }
-    });
-  }
-}
-
-function openSection(id) {
-  currentSection = id;
-  els.sections.forEach((section) => {
-    section.classList.toggle("active", section.id === id);
-  });
-  els.navBtns.forEach((btn) => {
-    const active = btn.dataset.section === id;
-    btn.classList.toggle("active", active);
-  });
-  const selectedBtn = [...els.navBtns].find((btn) => btn.dataset.section === id);
-  els.sectionTitle.textContent = selectedBtn ? selectedBtn.textContent : "Dashboard";
-  const activeSection = document.getElementById(id);
-  if (activeSection) {
-    activeSection.animate(
-      [
-        { opacity: 0.65, transform: "translateY(8px)" },
-        { opacity: 1, transform: "translateY(0)" }
-      ],
-      { duration: 260, easing: "ease-out" }
-    );
-  }
-}
-
-function tickTimer() {
-  timer.remainingSeconds -= 1;
-  if (timer.remainingSeconds <= 0) {
-    if (timer.mode === "focus") {
-      state.pomodoroCount += 1;
-      state.streak = Math.max(1, state.streak + 1);
-      state.weeklyMinutes[(new Date().getDay() + 6) % 7] += state.focusMinutes;
-      showToast("Focus session complete");
-    } else {
-      showToast("Break complete");
-    }
-    timer.mode = timer.mode === "focus" ? "break" : "focus";
-    timer.remainingSeconds = activeDurationMinutes() * 60;
-    persist();
-    renderDashboard();
-    renderAnalytics();
-  }
-  updateTimerDisplay();
-}
-
-function activeDurationMinutes() {
-  return timer.mode === "focus" ? state.focusMinutes : state.breakMinutes;
-}
-
-function updateTimerDisplay() {
-  const mins = Math.floor(timer.remainingSeconds / 60);
-  const secs = timer.remainingSeconds % 60;
-  els.timerDisplay.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  els.timerModeLabel.textContent = timer.mode === "focus" ? "Focus mode" : "Break mode";
-  els.pomodoroCount.textContent = String(state.pomodoroCount);
-}
-
-function clearTimerInterval() {
-  if (timer.intervalId !== null) {
-    window.clearInterval(timer.intervalId);
-    timer.intervalId = null;
-  }
-}
-
-function getActiveDeck() {
-  return state.decks.find((deck) => deck.id === state.activeDeckId) || null;
-}
-
-function showToast(message) {
-  els.toast.textContent = message;
-  els.toast.classList.add("show");
-  if (toastTimerId) {
-    clearTimeout(toastTimerId);
-  }
-  toastTimerId = window.setTimeout(() => {
-    els.toast.classList.remove("show");
-  }, 1800);
-}
-
-function renderProfile() {
-  const profile = sanitizeProfile(state.profile);
-  state.profile = profile;
-  els.userNameDisplay.textContent = profile.name;
-  els.userGoalDisplay.textContent = profile.goal;
-  els.profileName.value = profile.name;
-  els.profileGoal.value = profile.goal;
-  els.profileBio.value = profile.bio;
-  els.profileAvatarPreview.textContent = profile.name.charAt(0).toUpperCase();
-}
-
-function openProfileModal() {
-  renderProfile();
-  els.profileModal.classList.add("open");
-  els.profileModal.setAttribute("aria-hidden", "false");
-  els.profileName.focus();
-}
-
-function closeProfileModal() {
-  els.profileModal.classList.remove("open");
-  els.profileModal.setAttribute("aria-hidden", "true");
-}
-
-function openSimbaPanel() {
-  els.simbaBackdrop.classList.add("open");
-  els.simbaBackdrop.setAttribute("aria-hidden", "false");
-  els.simbaPanel.classList.add("open");
-  els.simbaPanel.setAttribute("aria-hidden", "false");
-  els.simbaInput.focus();
-  ensureSimbaStarter();
-  scrollSimbaToBottom();
-}
-
-function closeSimbaPanel() {
-  els.simbaBackdrop.classList.remove("open");
-  els.simbaBackdrop.setAttribute("aria-hidden", "true");
-  els.simbaPanel.classList.remove("open");
-  els.simbaPanel.setAttribute("aria-hidden", "true");
-  showSimbaTyping(false);
-}
-
-function ensureSimbaStarter() {
-  if (state.simbaChat.length > 0) {
-    return;
-  }
-  addAssistantMessage(`Hi ${sanitizeProfile(state.profile).name}, I am Simba. Ask me for study plans, Pomodoro guidance, or motivation.`);
-}
-
-function addUserMessage(text) {
-  state.simbaChat.push({ role: "user", text, ts: Date.now() });
-  trimSimbaHistory();
-  persist();
-  renderSimbaMessages();
-}
-
-function addAssistantMessage(text) {
-  state.simbaChat.push({ role: "assistant", text, ts: Date.now() });
-  trimSimbaHistory();
-  persist();
-  renderSimbaMessages();
-}
-
-function trimSimbaHistory() {
-  if (state.simbaChat.length > 120) {
-    state.simbaChat = state.simbaChat.slice(-120);
-  }
-}
-
-function renderSimbaMessages() {
-  if (!Array.isArray(state.simbaChat) || state.simbaChat.length === 0) {
-    els.simbaMessages.innerHTML = '<p class="subtle">Start a conversation with Simba.</p>';
-    return;
-  }
-  els.simbaMessages.innerHTML = state.simbaChat
-    .map((item) => `<div class="simba-bubble ${item.role}">${escapeHtml(item.text)}</div>`)
-    .join("");
-  scrollSimbaToBottom();
-}
-
-function showSimbaTyping(isVisible) {
-  els.simbaTyping.classList.toggle("show", isVisible);
-}
-
-function setSimbaLoading(isLoading) {
-  simbaRequestInFlight = isLoading;
-  showSimbaTyping(isLoading);
-  els.simbaInput.disabled = isLoading;
-  els.simbaSend.disabled = isLoading;
-  els.simbaSend.textContent = isLoading ? "Sending..." : "Send";
-}
-
-function scrollSimbaToBottom() {
-  els.simbaMessages.scrollTop = els.simbaMessages.scrollHeight;
-}
-
-function sanitizeProfile(profile) {
-  const safe = profile && typeof profile === "object" ? profile : {};
-  return {
-    name: typeof safe.name === "string" && safe.name.trim() ? safe.name.trim().slice(0, 40) : "Scholar",
-    goal: typeof safe.goal === "string" && safe.goal.trim() ? safe.goal.trim().slice(0, 100) : "Stay consistent with daily deep work",
-    bio: typeof safe.bio === "string" ? safe.bio.trim().slice(0, 180) : ""
-  };
-}
-
-function buildSimbaSystemPrompt() {
-  const profile = sanitizeProfile(state.profile);
-  return `You are Simba, a highly intelligent and friendly study assistant inside a learning app.
-Help students study, explain concepts simply, build practical plans, and keep them motivated and disciplined.
-Keep answers clear, concise, and actionable.
-Address the user by name occasionally: ${profile.name}.
-Current user study goal: ${profile.goal}.
-If the user asks non-study questions, still respond helpfully and politely.`;
-}
-
-function buildContextMessages() {
-  const max = AI_CONFIG.maxContextMessages;
-  const recent = state.simbaChat.slice(-max);
-  return recent
-    .filter((entry) => entry && (entry.role === "user" || entry.role === "assistant"))
-    .map((entry) => ({
-      role: entry.role,
-      content: entry.text
-    }));
-}
-
-async function requestSimbaReply() {
-  if (!AI_CONFIG.apiKey || AI_CONFIG.apiKey === "YOUR_API_KEY_HERE") {
-    throw new Error("Missing API key");
-  }
-  if (AI_CONFIG.provider === "openai") {
-    return requestOpenAiReply();
-  }
-  return requestGeminiReply();
-}
-
-async function requestGeminiReply() {
-  const endpoint = AI_CONFIG.proxyUrl
-    ? AI_CONFIG.proxyUrl
-    : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(AI_CONFIG.geminiModel)}:generateContent?key=${encodeURIComponent(AI_CONFIG.apiKey)}`;
-
-  const context = buildContextMessages();
-  const contents = [
-    {
-      role: "user",
-      parts: [{ text: buildSimbaSystemPrompt() }]
-    },
-    ...context.map((msg) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }]
-    }))
-  ];
-
-  const response = await fetchWithRetry(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents })
-  });
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!text) {
-    throw new Error("Invalid Gemini response");
-  }
-  return text;
-}
-
-async function requestOpenAiReply() {
-  const endpoint = AI_CONFIG.proxyUrl || "https://api.openai.com/v1/chat/completions";
-  const messages = [
-    { role: "system", content: buildSimbaSystemPrompt() },
-    ...buildContextMessages()
-  ];
-  const response = await fetchWithRetry(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${AI_CONFIG.apiKey}`
-    },
-    body: JSON.stringify({
-      model: AI_CONFIG.openAiModel,
-      messages,
-      temperature: 0.6
-    })
-  });
-  const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content?.trim();
-  if (!text) {
-    throw new Error("Invalid OpenAI response");
-  }
-  return text;
-}
-
-async function fetchWithRetry(url, options) {
-  const first = await fetch(url, options);
-  if (first.ok) {
-    return first;
-  }
-  if (first.status >= 500 || first.status === 429) {
-    await sleep(700);
-    const second = await fetch(url, options);
-    if (second.ok) {
-      return second;
-    }
-    throw new Error(`API request failed: ${second.status}`);
-  }
-  throw new Error(`API request failed: ${first.status}`);
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) {
-      return structuredClone(defaults);
-    }
-    const parsed = JSON.parse(raw);
-    return {
-      ...structuredClone(defaults),
-      ...parsed
-    };
-  } catch {
-    return structuredClone(defaults);
-  }
-}
-
-function persist() {
-  localStorage.setItem(storageKey, JSON.stringify(state));
-}
-
-function buildQuizOptions(correctAnswer) {
-  const distractors = state.quizItems
-    .map((entry) => entry.answer)
-    .filter((answer) => answer !== correctAnswer)
-    .slice(0, 3);
-  const options = [correctAnswer, ...distractors];
-  while (options.length < 4) {
-    options.push(`Option ${options.length + 1}`);
-  }
-  return options.sort(() => Math.random() - 0.5);
-}
-
-function destroyChart(canvasEl) {
-  const chart = Chart.getChart(canvasEl);
-  if (chart) {
-    chart.destroy();
-  }
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function escapeHtmlAttr(value) {
-  return escapeHtml(value).replaceAll("`", "&#96;");
-}
-
+.toast.show { opacity:1; transform:translateY(0); }

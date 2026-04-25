@@ -1150,3 +1150,11 @@ function escapeHtmlAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#96;");
 }
 
+const AI_CONFIG = {
+  provider: "gemini", // "gemini" or "openai"
+  apiKey: "YOUR_API_KEY_HERE",
+  proxyUrl: "",
+  geminiModel: "gemini-1.5-flash",
+  openAiModel: "gpt-4o-mini",
+  maxContextMessages: 14
+};

@@ -762,6 +762,22 @@ select:focus {
   box-shadow: 0 20px 35px rgba(83, 115, 255, 0.55);
 }
 
+.simba-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 84;
+  background: rgba(3, 8, 20, 0.32);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+.simba-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .simba-panel {
   position: fixed;
   right: 18px;
@@ -790,6 +806,17 @@ select:focus {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+}
+
+.simba-online-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #56da99;
+  box-shadow: 0 0 0 4px rgba(86, 218, 153, 0.2);
+  vertical-align: middle;
 }
 
 .simba-header h3 {
@@ -939,4 +966,3 @@ body.focus-mode .top-actions {
     bottom: 12px;
   }
 }
-

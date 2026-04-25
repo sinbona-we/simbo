@@ -1,494 +1,802 @@
-const STORAGE_KEY = "simbastudy_v1";
-
-const defaultState = {
-  profile: { name: "Student", level: "high-school" },
-  schedule: [],
-  planner: [],
+const storageKey = "simboStudyOS.v1";
+const defaults = {
+  tasks: [],
   notes: [],
-  flashcards: [],
-  habits: [],
-  journal: [],
-  visions: [],
-  topicModules: [],
-  quizStats: { taken: 0, correct: 0 },
-  focus: { sessions: 0, seconds: 0 },
-  streak: { days: 0, lastMarked: "" }
+  decks: [],
+  sessions: 0,
+  streak: 0,
+  focusMinutes: 25,
+  breakMinutes: 5,
+  pomodoroCount: 0,
+  quizItems: [],
+  weeklyMinutes: [30, 45, 60, 35, 75, 90, 50],
+  activeDeckId: null
 };
 
-let state = loadState();
-let timer = null;
-let timeLeft = 25 * 60;
-let quizCurrent = null;
+const state = loadState();
+let currentSection = "dashboard";
+let timer = {
+  mode: "focus",
+  remainingSeconds: state.focusMinutes * 60,
+  running: false,
+  intervalId: null
+};
+let quizRun = null;
+let flashcardIndex = 0;
+let toastTimerId = null;
 
-const quotes = [
-  "Small steps every day create unstoppable academic momentum.",
-  "Discipline is your bridge between goals and grades.",
-  "Every focused session is a vote for your future self.",
-  "Consistency beats intensity when exams arrive.",
-  "Mastery begins when you stop postponing your potential."
-];
+const els = {
+  sectionTitle: document.getElementById("sectionTitle"),
+  navMenu: document.getElementById("navMenu"),
+  sections: document.querySelectorAll(".section"),
+  navBtns: document.querySelectorAll(".nav-btn"),
+  quickSectionButtons: document.querySelectorAll("[data-section-target]"),
+  focusModeToggle: document.getElementById("focusModeToggle"),
+  globalSearch: document.getElementById("globalSearch"),
+  quickAddTask: document.getElementById("quickAddTask"),
+  toast: document.getElementById("toast"),
+  taskForm: document.getElementById("taskForm"),
+  taskTitle: document.getElementById("taskTitle"),
+  taskDeadline: document.getElementById("taskDeadline"),
+  taskFilter: document.getElementById("taskFilter"),
+  taskList: document.getElementById("taskList"),
+  todayAgenda: document.getElementById("todayAgenda"),
+  kpiStreak: document.getElementById("kpiStreak"),
+  kpiSessions: document.getElementById("kpiSessions"),
+  kpiHours: document.getElementById("kpiHours"),
+  kpiGoals: document.getElementById("kpiGoals"),
+  timerDisplay: document.getElementById("timerDisplay"),
+  timerModeLabel: document.getElementById("timerModeLabel"),
+  timerStartPause: document.getElementById("timerStartPause"),
+  timerReset: document.getElementById("timerReset"),
+  timerSwitch: document.getElementById("timerSwitch"),
+  focusMinutes: document.getElementById("focusMinutes"),
+  breakMinutes: document.getElementById("breakMinutes"),
+  saveTimerSettings: document.getElementById("saveTimerSettings"),
+  pomodoroCount: document.getElementById("pomodoroCount"),
+  deckForm: document.getElementById("deckForm"),
+  deckName: document.getElementById("deckName"),
+  deckList: document.getElementById("deckList"),
+  activeDeckTitle: document.getElementById("activeDeckTitle"),
+  cardForm: document.getElementById("cardForm"),
+  cardFront: document.getElementById("cardFront"),
+  cardBack: document.getElementById("cardBack"),
+  flashcard: document.getElementById("flashcard"),
+  prevCard: document.getElementById("prevCard"),
+  nextCard: document.getElementById("nextCard"),
+  cardCounter: document.getElementById("cardCounter"),
+  noteForm: document.getElementById("noteForm"),
+  noteTitle: document.getElementById("noteTitle"),
+  noteBody: document.getElementById("noteBody"),
+  noteSearch: document.getElementById("noteSearch"),
+  notesGrid: document.getElementById("notesGrid"),
+  quizForm: document.getElementById("quizForm"),
+  quizTopic: document.getElementById("quizTopic"),
+  quizQuestion: document.getElementById("quizQuestion"),
+  quizAnswer: document.getElementById("quizAnswer"),
+  startQuiz: document.getElementById("startQuiz"),
+  quizStatus: document.getElementById("quizStatus"),
+  quizPanel: document.getElementById("quizPanel"),
+  weeklyChart: document.getElementById("weeklyChart"),
+  completionChart: document.getElementById("completionChart")
+};
 
-const questionBank = [
-  { q: "What is active recall?", o: ["Passive rereading", "Testing memory retrieval", "Skipping difficult topics"], a: 1, e: "Active recall is retrieving information without looking." },
-  { q: "Pomodoro standard focus duration?", o: ["10 mins", "25 mins", "60 mins"], a: 1, e: "Classic Pomodoro uses 25-minute focus blocks." },
-  { q: "Best way to improve retention?", o: ["Cram once", "Spaced repetition", "Avoid testing"], a: 1, e: "Spacing repeats over time improves long-term memory." }
-];
+bootstrap();
 
-function loadState() {
-  try {
-    return { ...defaultState, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
-  } catch {
-    return { ...defaultState };
-  }
-}
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function bootstrap() {
+  bindNavigation();
+  bindPlanner();
+  bindTimer();
+  bindFlashcards();
+  bindNotes();
+  bindQuiz();
+  bindGlobalControls();
   renderAll();
 }
 
-function byId(id) {
-  return document.getElementById(id);
-}
-
-function setSection(sectionId) {
-  document.querySelectorAll(".section").forEach((el) => el.classList.toggle("active", el.id === sectionId));
-  document.querySelectorAll(".nav-link").forEach((btn) => btn.classList.toggle("active", btn.dataset.section === sectionId));
-}
-
-function renderSchedule() {
-  const list = byId("todayScheduleList");
-  list.innerHTML = "";
-  const items = [...state.schedule].sort((a, b) => a.time.localeCompare(b.time));
-  for (const item of items) {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${item.time} - ${item.title}</span>`;
-    const btn = document.createElement("button");
-    btn.className = "btn ghost";
-    btn.textContent = "Done";
-    btn.onclick = () => {
-      state.schedule = state.schedule.filter((x) => x.id !== item.id);
-      saveState();
-    };
-    li.appendChild(btn);
-    list.appendChild(li);
-  }
-}
-
-function renderTasks() {
-  const planner = byId("plannerList");
-  const quickList = byId("taskList");
-  planner.innerHTML = "";
-  quickList.innerHTML = "";
-
-  for (const task of state.planner) {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${task.title} (${task.due})</span><span class="chip ${task.priority.toLowerCase()}">${task.priority}</span>`;
-    const done = document.createElement("input");
-    done.type = "checkbox";
-    done.checked = task.done;
-    done.onchange = () => {
-      task.done = done.checked;
-      saveState();
-    };
-    li.appendChild(done);
-    planner.appendChild(li);
-
-    if (!task.done) {
-      const p = document.createElement("li");
-      p.textContent = task.title;
-      quickList.appendChild(p);
+function bindNavigation() {
+  els.navMenu.addEventListener("click", (event) => {
+    const btn = event.target.closest(".nav-btn");
+    if (!btn) {
+      return;
     }
-  }
-}
-
-function renderStreak() {
-  byId("streakCount").textContent = state.streak.days;
-  byId("streakMessage").textContent =
-    state.streak.days > 0 ? "You are building an elite consistency streak." : "Start your first streak today.";
-}
-
-function renderFlashcards() {
-  const deck = byId("flashcardDeck");
-  deck.innerHTML = "";
-  state.flashcards.forEach((card) => {
-    const el = document.createElement("div");
-    el.className = "flashcard";
-    el.dataset.side = "question";
-    el.innerHTML = `<small>Tap to flip</small><h4>${card.question}</h4>`;
-    el.onclick = () => {
-      const showingQ = el.dataset.side === "question";
-      el.dataset.side = showingQ ? "answer" : "question";
-      el.innerHTML = showingQ
-        ? `<small>Answer</small><h4>${card.answer}</h4>`
-        : `<small>Tap to flip</small><h4>${card.question}</h4>`;
-    };
-    deck.appendChild(el);
+    openSection(btn.dataset.section);
   });
-}
 
-function renderNotes() {
-  const list = byId("noteList");
-  const query = byId("vaultSearch").value.trim().toLowerCase();
-  list.innerHTML = "";
-
-  state.notes
-    .filter((n) => !query || n.title.toLowerCase().includes(query) || n.body.toLowerCase().includes(query))
-    .forEach((note) => {
-      const li = document.createElement("li");
-      li.innerHTML = `<span><strong>${note.title}</strong> - ${note.body.slice(0, 80)}...</span>`;
-      const del = document.createElement("button");
-      del.className = "btn ghost";
-      del.textContent = "Delete";
-      del.onclick = () => {
-        state.notes = state.notes.filter((x) => x.id !== note.id);
-        saveState();
-      };
-      li.appendChild(del);
-      list.appendChild(li);
+  els.quickSectionButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openSection(btn.dataset.sectionTarget);
     });
-}
-
-function renderHabits() {
-  const list = byId("habitList");
-  list.innerHTML = "";
-  for (const habit of state.habits) {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${habit.name}</span><span class="chip low">${habit.done ? "Done Today" : "Pending"}</span>`;
-    const btn = document.createElement("button");
-    btn.className = "btn ghost";
-    btn.textContent = habit.done ? "Undo" : "Mark";
-    btn.onclick = () => {
-      habit.done = !habit.done;
-      saveState();
-    };
-    li.appendChild(btn);
-    list.appendChild(li);
-  }
-}
-
-function renderJournalAndVision() {
-  const j = byId("journalList");
-  j.innerHTML = "";
-  for (const entry of state.journal.slice().reverse()) {
-    const li = document.createElement("li");
-    li.textContent = `${new Date(entry.date).toLocaleDateString()}: ${entry.text}`;
-    j.appendChild(li);
-  }
-
-  const v = byId("visionList");
-  v.innerHTML = "";
-  for (const goal of state.visions) {
-    const li = document.createElement("li");
-    li.textContent = goal;
-    v.appendChild(li);
-  }
-}
-
-function renderTopicModules() {
-  const list = byId("topicModules");
-  list.innerHTML = "";
-  for (const module of state.topicModules) {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${module.title}</span><span class="chip medium">${module.time}</span>`;
-    list.appendChild(li);
-  }
-}
-
-function renderAnalytics() {
-  const totalFocusHours = (state.focus.seconds / 3600).toFixed(1);
-  byId("studyHours").textContent = `${totalFocusHours}h`;
-
-  const accuracy = state.quizStats.taken
-    ? Math.round((state.quizStats.correct / state.quizStats.taken) * 100)
-    : 0;
-  byId("quizAccuracy").textContent = `${accuracy}%`;
-
-  const completion = state.planner.length
-    ? Math.round((state.planner.filter((t) => t.done).length / state.planner.length) * 100)
-    : 0;
-  byId("taskCompletion").textContent = `${completion}%`;
-
-  byId("sessionCount").textContent = state.focus.sessions;
-  drawChart([totalFocusHours, accuracy, completion]);
-}
-
-function drawChart(values) {
-  const canvas = byId("progressChart");
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const labels = ["Study Hours", "Quiz Accuracy", "Task Completion"];
-  const max = Math.max(100, ...values.map((x) => Number(x)));
-  const barW = 200;
-  const gap = 90;
-  const startX = 90;
-
-  values.forEach((v, i) => {
-    const h = (Number(v) / max) * 170;
-    const x = startX + i * (barW + gap);
-    const y = 220 - h;
-    ctx.fillStyle = ["#4da3ff", "#f6c35d", "#56d398"][i];
-    ctx.fillRect(x, y, barW, h);
-    ctx.fillStyle = "#d9e6ff";
-    ctx.font = "600 14px Inter";
-    ctx.fillText(labels[i], x, 244);
-    ctx.fillText(String(v), x + 88, y - 8);
   });
 }
 
-function renderProfile() {
-  byId("profileName").textContent = state.profile.name || "Student";
-  byId("profileInitial").textContent = (state.profile.name || "S").charAt(0).toUpperCase();
+function bindPlanner() {
+  els.taskForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const title = els.taskTitle.value.trim();
+    if (!title) {
+      return;
+    }
+    const task = {
+      id: crypto.randomUUID(),
+      title,
+      deadline: els.taskDeadline.value || null,
+      done: false,
+      createdAt: Date.now()
+    };
+    state.tasks.unshift(task);
+    els.taskForm.reset();
+    persist();
+    renderPlanner();
+    renderDashboard();
+    renderAnalytics();
+    showToast("Task added");
+  });
+
+  els.taskFilter.addEventListener("change", renderPlanner);
+  els.taskList.addEventListener("click", (event) => {
+    const item = event.target.closest("[data-task-id]");
+    if (!item) {
+      return;
+    }
+    const taskId = item.dataset.taskId;
+    const task = state.tasks.find((entry) => entry.id === taskId);
+    if (!task) {
+      return;
+    }
+    if (event.target.matches("[data-action='toggle']")) {
+      task.done = !task.done;
+      persist();
+      renderPlanner();
+      renderDashboard();
+      renderAnalytics();
+      return;
+    }
+    if (event.target.matches("[data-action='delete']")) {
+      state.tasks = state.tasks.filter((entry) => entry.id !== taskId);
+      persist();
+      renderPlanner();
+      renderDashboard();
+      renderAnalytics();
+      showToast("Task removed");
+    }
+  });
 }
 
-function renderQuote() {
-  byId("motivationalMessage").textContent = quotes[Math.floor(Math.random() * quotes.length)];
+function bindTimer() {
+  els.focusMinutes.value = state.focusMinutes;
+  els.breakMinutes.value = state.breakMinutes;
+  updateTimerDisplay();
+  els.pomodoroCount.textContent = String(state.pomodoroCount);
+
+  els.timerStartPause.addEventListener("click", () => {
+    timer.running = !timer.running;
+    els.timerStartPause.textContent = timer.running ? "Pause" : "Start";
+    if (timer.running) {
+      timer.intervalId = window.setInterval(tickTimer, 1000);
+      state.sessions += 1;
+      persist();
+      renderDashboard();
+    } else {
+      clearTimerInterval();
+    }
+  });
+
+  els.timerReset.addEventListener("click", () => {
+    clearTimerInterval();
+    timer.running = false;
+    els.timerStartPause.textContent = "Start";
+    timer.remainingSeconds = activeDurationMinutes() * 60;
+    updateTimerDisplay();
+  });
+
+  els.timerSwitch.addEventListener("click", () => {
+    clearTimerInterval();
+    timer.running = false;
+    els.timerStartPause.textContent = "Start";
+    timer.mode = timer.mode === "focus" ? "break" : "focus";
+    timer.remainingSeconds = activeDurationMinutes() * 60;
+    updateTimerDisplay();
+  });
+
+  els.saveTimerSettings.addEventListener("click", () => {
+    const focus = Number(els.focusMinutes.value);
+    const brk = Number(els.breakMinutes.value);
+    if (!Number.isFinite(focus) || !Number.isFinite(brk) || focus < 1 || brk < 1) {
+      showToast("Enter valid timer values");
+      return;
+    }
+    state.focusMinutes = focus;
+    state.breakMinutes = brk;
+    if (!timer.running) {
+      timer.remainingSeconds = activeDurationMinutes() * 60;
+      updateTimerDisplay();
+    }
+    persist();
+    showToast("Timer settings saved");
+  });
+}
+
+function bindFlashcards() {
+  els.deckForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const name = els.deckName.value.trim();
+    if (!name) {
+      return;
+    }
+    const deck = {
+      id: crypto.randomUUID(),
+      name,
+      cards: []
+    };
+    state.decks.push(deck);
+    state.activeDeckId = deck.id;
+    els.deckForm.reset();
+    flashcardIndex = 0;
+    persist();
+    renderFlashcards();
+    showToast("Deck created");
+  });
+
+  els.deckList.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-deck-id]");
+    if (!row) {
+      return;
+    }
+    const deckId = row.dataset.deckId;
+    if (event.target.matches("[data-action='open']")) {
+      state.activeDeckId = deckId;
+      flashcardIndex = 0;
+      persist();
+      renderFlashcards();
+      return;
+    }
+    if (event.target.matches("[data-action='delete']")) {
+      state.decks = state.decks.filter((deck) => deck.id !== deckId);
+      if (state.activeDeckId === deckId) {
+        state.activeDeckId = state.decks[0]?.id || null;
+        flashcardIndex = 0;
+      }
+      persist();
+      renderFlashcards();
+      showToast("Deck deleted");
+    }
+  });
+
+  els.cardForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const activeDeck = getActiveDeck();
+    if (!activeDeck) {
+      showToast("Create or select a deck first");
+      return;
+    }
+    const front = els.cardFront.value.trim();
+    const back = els.cardBack.value.trim();
+    if (!front || !back) {
+      return;
+    }
+    activeDeck.cards.push({
+      id: crypto.randomUUID(),
+      front,
+      back
+    });
+    els.cardForm.reset();
+    flashcardIndex = Math.max(0, activeDeck.cards.length - 1);
+    persist();
+    renderFlashcards();
+    showToast("Card added");
+  });
+
+  els.prevCard.addEventListener("click", () => {
+    const activeDeck = getActiveDeck();
+    if (!activeDeck || activeDeck.cards.length === 0) {
+      return;
+    }
+    flashcardIndex = (flashcardIndex - 1 + activeDeck.cards.length) % activeDeck.cards.length;
+    renderFlashcardFace();
+  });
+
+  els.nextCard.addEventListener("click", () => {
+    const activeDeck = getActiveDeck();
+    if (!activeDeck || activeDeck.cards.length === 0) {
+      return;
+    }
+    flashcardIndex = (flashcardIndex + 1) % activeDeck.cards.length;
+    renderFlashcardFace();
+  });
+
+  els.flashcard.addEventListener("click", () => {
+    els.flashcard.classList.toggle("flipped");
+  });
+
+  els.flashcard.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      els.flashcard.classList.toggle("flipped");
+    }
+  });
+}
+
+function bindNotes() {
+  els.noteForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const title = els.noteTitle.value.trim();
+    const body = els.noteBody.value.trim();
+    if (!title) {
+      return;
+    }
+    const note = {
+      id: crypto.randomUUID(),
+      title,
+      body,
+      createdAt: Date.now()
+    };
+    state.notes.unshift(note);
+    els.noteForm.reset();
+    persist();
+    renderNotes();
+    showToast("Note saved");
+  });
+
+  els.noteSearch.addEventListener("input", renderNotes);
+  els.notesGrid.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-note-id]");
+    if (!row) {
+      return;
+    }
+    if (!event.target.matches("[data-action='delete']")) {
+      return;
+    }
+    const id = row.dataset.noteId;
+    state.notes = state.notes.filter((note) => note.id !== id);
+    persist();
+    renderNotes();
+    showToast("Note removed");
+  });
+}
+
+function bindQuiz() {
+  els.quizForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const topic = els.quizTopic.value.trim();
+    const question = els.quizQuestion.value.trim();
+    const answer = els.quizAnswer.value.trim();
+    if (!topic || !question || !answer) {
+      return;
+    }
+    state.quizItems.push({
+      id: crypto.randomUUID(),
+      topic,
+      question,
+      answer
+    });
+    els.quizForm.reset();
+    persist();
+    renderQuiz();
+    showToast("Quiz item added");
+  });
+
+  els.startQuiz.addEventListener("click", () => {
+    if (state.quizItems.length === 0) {
+      showToast("Add quiz items first");
+      return;
+    }
+    const shuffled = [...state.quizItems].sort(() => Math.random() - 0.5).slice(0, 5);
+    quizRun = {
+      index: 0,
+      score: 0,
+      items: shuffled
+    };
+    renderQuizRun();
+  });
+
+  els.quizPanel.addEventListener("click", (event) => {
+    if (!quizRun) {
+      return;
+    }
+    const btn = event.target.closest("[data-answer]");
+    if (!btn) {
+      return;
+    }
+    const current = quizRun.items[quizRun.index];
+    const answer = btn.dataset.answer;
+    if (answer === current.answer) {
+      quizRun.score += 1;
+    }
+    quizRun.index += 1;
+    if (quizRun.index >= quizRun.items.length) {
+      const result = quizRun;
+      quizRun = null;
+      els.quizStatus.textContent = `Score ${result.score}/${result.items.length}`;
+      els.quizPanel.innerHTML = `<p>Done. You scored <strong>${result.score}/${result.items.length}</strong>.</p>`;
+      return;
+    }
+    renderQuizRun();
+  });
+}
+
+function bindGlobalControls() {
+  els.quickAddTask.addEventListener("click", () => {
+    openSection("planner");
+    els.taskTitle.focus();
+  });
+
+  els.focusModeToggle.addEventListener("click", () => {
+    const active = document.body.classList.toggle("focus-mode");
+    els.focusModeToggle.textContent = active ? "Exit Focus Mode" : "Enter Focus Mode";
+    els.focusModeToggle.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+
+  els.globalSearch.addEventListener("input", () => {
+    const query = els.globalSearch.value.trim().toLowerCase();
+    if (!query) {
+      return;
+    }
+    if (state.tasks.some((task) => task.title.toLowerCase().includes(query))) {
+      openSection("planner");
+      return;
+    }
+    if (state.notes.some((note) => `${note.title} ${note.body}`.toLowerCase().includes(query))) {
+      openSection("notes");
+      return;
+    }
+    if (state.decks.some((deck) => deck.name.toLowerCase().includes(query))) {
+      openSection("flashcards");
+      return;
+    }
+  });
 }
 
 function renderAll() {
-  renderSchedule();
-  renderTasks();
-  renderStreak();
+  renderDashboard();
+  renderPlanner();
+  renderTimer();
   renderFlashcards();
   renderNotes();
-  renderHabits();
-  renderJournalAndVision();
-  renderTopicModules();
+  renderQuiz();
   renderAnalytics();
-  renderProfile();
 }
 
-function generateAssistantReply(prompt) {
-  const level = state.profile.level;
-  const tone = {
-    "high-school": "simple and clear",
-    university: "academic but concise",
-    "self-learner": "friendly and practical"
-  }[level] || "clear";
-  return `Study Coach (${tone}): Focus on core definitions first, then solve 3 examples, then teach the concept aloud in your own words. Prompt analyzed: "${prompt}".`;
+function renderDashboard() {
+  els.kpiStreak.textContent = `${state.streak} days`;
+  els.kpiSessions.textContent = String(state.sessions);
+  const hours = (state.weeklyMinutes.reduce((sum, min) => sum + min, 0) / 60).toFixed(1);
+  els.kpiHours.textContent = `${hours}h`;
+  els.kpiGoals.textContent = String(state.tasks.filter((task) => !task.done).length);
+
+  const agendaItems = state.tasks
+    .filter((task) => !task.done)
+    .sort((a, b) => Number(new Date(a.deadline || "2999-12-31")) - Number(new Date(b.deadline || "2999-12-31")))
+    .slice(0, 5);
+
+  els.todayAgenda.innerHTML = agendaItems.length
+    ? agendaItems
+        .map((task) => {
+          const deadline = task.deadline ? new Date(task.deadline).toLocaleDateString() : "No deadline";
+          return `<li class="list-item"><span>${escapeHtml(task.title)}</span><small>${deadline}</small></li>`;
+        })
+        .join("")
+    : '<li class="list-item"><span>No tasks yet. Add one in Planner.</span></li>';
 }
 
-function makeTopicBreakdown(topic) {
-  return [
-    { title: `${topic}: Foundations`, time: "35 min" },
-    { title: `${topic}: Core Rules`, time: "45 min" },
-    { title: `${topic}: Practice Drills`, time: "50 min" },
-    { title: `${topic}: Mixed Review`, time: "30 min" }
-  ];
+function renderPlanner() {
+  const filter = els.taskFilter.value;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const visibleTasks = state.tasks.filter((task) => {
+    if (filter === "todo") {
+      return !task.done;
+    }
+    if (filter === "done") {
+      return task.done;
+    }
+    if (filter === "overdue") {
+      if (!task.deadline || task.done) {
+        return false;
+      }
+      return new Date(task.deadline) < now;
+    }
+    return true;
+  });
+
+  els.taskList.innerHTML = visibleTasks.length
+    ? visibleTasks
+        .map((task) => {
+          const isOverdue = Boolean(task.deadline && !task.done && new Date(task.deadline) < now);
+          const due = task.deadline ? new Date(task.deadline).toLocaleDateString() : "No deadline";
+          const badge = task.done ? "success" : isOverdue ? "danger" : "warn";
+          const label = task.done ? "Done" : isOverdue ? "Overdue" : "Active";
+          return `
+            <li class="list-item" data-task-id="${task.id}">
+              <div>
+                <strong>${escapeHtml(task.title)}</strong>
+                <div class="task-meta">
+                  <small>${due}</small>
+                  <span class="badge ${badge}">${label}</span>
+                </div>
+              </div>
+              <div class="inline-controls">
+                <button class="btn small ghost" data-action="toggle">${task.done ? "Undo" : "Done"}</button>
+                <button class="btn small ghost" data-action="delete">Delete</button>
+              </div>
+            </li>`;
+        })
+        .join("")
+    : '<li class="list-item"><span>No tasks in this view.</span></li>';
 }
 
-function buildQuiz(topic) {
-  const area = byId("quizArea");
-  const q = questionBank[Math.floor(Math.random() * questionBank.length)];
-  quizCurrent = q;
-  area.innerHTML = `
-    <div class="output">
-      <strong>${topic} Quiz:</strong>
-      <p>${q.q}</p>
-      ${q.o.map((opt, i) => `<label><input type="radio" name="quizOpt" value="${i}" /> ${opt}</label><br/>`).join("")}
-      <button id="submitQuiz" class="btn primary" style="margin-top:8px;">Submit Answer</button>
-      <p id="quizFeedback" class="muted"></p>
+function renderTimer() {
+  updateTimerDisplay();
+  els.timerModeLabel.textContent = timer.mode === "focus" ? "Focus mode" : "Break mode";
+  els.pomodoroCount.textContent = String(state.pomodoroCount);
+}
+
+function renderFlashcards() {
+  const activeDeck = getActiveDeck();
+  els.deckList.innerHTML = state.decks.length
+    ? state.decks
+        .map((deck) => {
+          const selected = deck.id === state.activeDeckId ? " (active)" : "";
+          return `
+            <li class="list-item" data-deck-id="${deck.id}">
+              <div>
+                <strong>${escapeHtml(deck.name)}${selected}</strong>
+                <small>${deck.cards.length} cards</small>
+              </div>
+              <div class="inline-controls">
+                <button class="btn small ghost" data-action="open">Open</button>
+                <button class="btn small ghost" data-action="delete">Delete</button>
+              </div>
+            </li>`;
+        })
+        .join("")
+    : '<li class="list-item"><span>No decks yet.</span></li>';
+
+  els.activeDeckTitle.textContent = activeDeck ? `Card Studio - ${activeDeck.name}` : "Card Studio";
+  if (activeDeck && flashcardIndex >= activeDeck.cards.length) {
+    flashcardIndex = Math.max(0, activeDeck.cards.length - 1);
+  }
+  renderFlashcardFace();
+}
+
+function renderFlashcardFace() {
+  const activeDeck = getActiveDeck();
+  const frontEl = els.flashcard.querySelector(".flashcard-front");
+  const backEl = els.flashcard.querySelector(".flashcard-back");
+  els.flashcard.classList.remove("flipped");
+  if (!activeDeck || activeDeck.cards.length === 0) {
+    frontEl.textContent = activeDeck ? "Add cards to begin" : "Select a deck";
+    backEl.textContent = "Create your first flashcard";
+    els.cardCounter.textContent = "0 / 0";
+    return;
+  }
+  const card = activeDeck.cards[flashcardIndex];
+  frontEl.textContent = card.front;
+  backEl.textContent = card.back;
+  els.cardCounter.textContent = `${flashcardIndex + 1} / ${activeDeck.cards.length}`;
+}
+
+function renderNotes() {
+  const query = els.noteSearch.value.trim().toLowerCase();
+  const filtered = state.notes.filter((note) => {
+    if (!query) {
+      return true;
+    }
+    return `${note.title} ${note.body}`.toLowerCase().includes(query);
+  });
+  els.notesGrid.innerHTML = filtered.length
+    ? filtered
+        .map((note) => {
+          return `
+            <article class="note-card" data-note-id="${note.id}">
+              <h4>${escapeHtml(note.title)}</h4>
+              <p>${escapeHtml(note.body || "No content")}</p>
+              <div class="inline-controls" style="margin-top: 8px;">
+                <button class="btn small ghost" data-action="delete">Delete</button>
+              </div>
+            </article>`;
+        })
+        .join("")
+    : '<p class="subtle">No notes found.</p>';
+}
+
+function renderQuiz() {
+  els.quizStatus.textContent = state.quizItems.length ? `${state.quizItems.length} questions ready` : "No active quiz";
+  if (!quizRun) {
+    els.quizPanel.innerHTML = state.quizItems.length
+      ? "<p>Select <strong>Start Quiz</strong> to begin.</p>"
+      : "<p>Add at least one question to run a quiz.</p>";
+  }
+}
+
+function renderQuizRun() {
+  if (!quizRun) {
+    return;
+  }
+  const current = quizRun.items[quizRun.index];
+  const options = buildQuizOptions(current.answer);
+  els.quizStatus.textContent = `Question ${quizRun.index + 1}/${quizRun.items.length}`;
+  els.quizPanel.innerHTML = `
+    <p><strong>${escapeHtml(current.topic)}</strong></p>
+    <p>${escapeHtml(current.question)}</p>
+    <div class="quiz-options">
+      ${options.map((option) => `<button class="btn ghost" data-answer="${escapeHtmlAttr(option)}">${escapeHtml(option)}</button>`).join("")}
     </div>
   `;
-
-  byId("submitQuiz").onclick = () => {
-    const selected = document.querySelector('input[name="quizOpt"]:checked');
-    if (!selected) return;
-    const pick = Number(selected.value);
-    const ok = pick === q.a;
-    state.quizStats.taken += 1;
-    if (ok) state.quizStats.correct += 1;
-    byId("quizFeedback").textContent = `${ok ? "Correct." : "Not quite."} ${q.e}`;
-    saveState();
-  };
 }
 
-function bindEvents() {
-  document.querySelectorAll(".nav-link").forEach((btn) => {
-    btn.onclick = () => setSection(btn.dataset.section);
-  });
+function renderAnalytics() {
+  const completed = state.tasks.filter((task) => task.done).length;
+  const total = state.tasks.length;
+  const pending = Math.max(total - completed, 0);
+  const completionRate = total ? Math.round((completed / total) * 100) : 0;
 
-  document.querySelectorAll(".jump").forEach((btn) => {
-    btn.onclick = () => setSection(btn.dataset.jump);
-  });
+  destroyChart(els.weeklyChart);
+  destroyChart(els.completionChart);
 
-  byId("newQuoteBtn").onclick = renderQuote;
-
-  byId("scheduleForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.schedule.push({
-      id: crypto.randomUUID(),
-      title: byId("scheduleTitle").value.trim(),
-      time: byId("scheduleTime").value
-    });
-    e.target.reset();
-    saveState();
-  };
-
-  byId("plannerForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.planner.push({
-      id: crypto.randomUUID(),
-      title: byId("plannerTask").value.trim(),
-      due: byId("plannerDue").value,
-      priority: byId("plannerPriority").value,
-      done: false
-    });
-    e.target.reset();
-    saveState();
-  };
-
-  byId("quickAddTaskBtn").onclick = () => setSection("productivity");
-
-  byId("markTodayStudied").onclick = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (state.streak.lastMarked !== today) {
-      state.streak.days += 1;
-      state.streak.lastMarked = today;
-      saveState();
-    }
-  };
-
-  byId("assistantForm").onsubmit = (e) => {
-    e.preventDefault();
-    byId("assistantOutput").textContent = generateAssistantReply(byId("assistantInput").value.trim());
-  };
-
-  byId("topicForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.topicModules = makeTopicBreakdown(byId("topicInput").value.trim());
-    saveState();
-  };
-
-  byId("flashcardForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.flashcards.push({
-      question: byId("flashQuestion").value.trim(),
-      answer: byId("flashAnswer").value.trim()
-    });
-    e.target.reset();
-    saveState();
-  };
-
-  byId("quizForm").onsubmit = (e) => {
-    e.preventDefault();
-    buildQuiz(byId("quizTopic").value.trim());
-  };
-
-  byId("habitForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.habits.push({ name: byId("habitName").value.trim(), done: false });
-    e.target.reset();
-    saveState();
-  };
-
-  byId("optimizeBtn").onclick = () => {
-    const list = byId("optimizerOutput");
-    const pending = state.planner.filter((t) => !t.done).slice(0, 3);
-    list.innerHTML = "";
-    if (!pending.length) {
-      const li = document.createElement("li");
-      li.textContent = "No pending tasks. Perfect time for revision or rest.";
-      list.appendChild(li);
-      return;
-    }
-    pending.forEach((task, i) => {
-      const li = document.createElement("li");
-      li.textContent = `${9 + i * 2}:00 - ${task.title} (${task.priority})`;
-      list.appendChild(li);
-    });
-  };
-
-  byId("noteForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.notes.push({
-      id: crypto.randomUUID(),
-      title: byId("noteTitle").value.trim(),
-      body: byId("noteBody").value.trim()
-    });
-    e.target.reset();
-    saveState();
-  };
-
-  byId("vaultSearch").oninput = renderNotes;
-
-  byId("journalForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.journal.push({ text: byId("journalText").value.trim(), date: new Date().toISOString() });
-    e.target.reset();
-    saveState();
-  };
-
-  byId("visionForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.visions.push(byId("visionGoal").value.trim());
-    e.target.reset();
-    saveState();
-  };
-
-  byId("settingsForm").onsubmit = (e) => {
-    e.preventDefault();
-    state.profile.name = byId("studentName").value.trim() || "Student";
-    state.profile.level = byId("studentLevel").value;
-    saveState();
-  };
-
-  byId("startTimer").onclick = () => {
-    if (timer) return;
-    const mins = Number(byId("focusMinutes").value) || 25;
-    if (timeLeft <= 0 || timeLeft === 25 * 60) timeLeft = mins * 60;
-    timer = setInterval(() => {
-      timeLeft -= 1;
-      byId("timerDisplay").textContent = formatTime(timeLeft);
-      if (timeLeft <= 0) {
-        clearInterval(timer);
-        timer = null;
-        state.focus.sessions += 1;
-        state.focus.seconds += mins * 60;
-        timeLeft = mins * 60;
-        byId("timerDisplay").textContent = formatTime(timeLeft);
-        saveState();
+  if (typeof Chart !== "undefined") {
+    new Chart(els.weeklyChart, {
+      type: "line",
+      data: {
+        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        datasets: [
+          {
+            label: "Minutes",
+            data: state.weeklyMinutes,
+            borderColor: "#7aa0ff",
+            backgroundColor: "rgba(122, 160, 255, 0.2)",
+            tension: 0.35,
+            fill: true
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          legend: { labels: { color: "#d9e4ff" } }
+        },
+        scales: {
+          x: { ticks: { color: "#a9bcf7" }, grid: { color: "rgba(151, 173, 255, 0.08)" } },
+          y: { ticks: { color: "#a9bcf7" }, grid: { color: "rgba(151, 173, 255, 0.08)" } }
+        }
       }
-    }, 1000);
-  };
+    });
 
-  byId("pauseTimer").onclick = () => {
-    clearInterval(timer);
-    timer = null;
-  };
-
-  byId("resetTimer").onclick = () => {
-    clearInterval(timer);
-    timer = null;
-    const mins = Number(byId("focusMinutes").value) || 25;
-    timeLeft = mins * 60;
-    byId("timerDisplay").textContent = formatTime(timeLeft);
-  };
-
-  byId("globalSearch").oninput = (e) => {
-    const q = e.target.value.toLowerCase();
-    if (!q) return;
-    const hasTask = state.planner.some((t) => t.title.toLowerCase().includes(q));
-    const hasNote = state.notes.some((n) => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q));
-    if (hasTask) setSection("productivity");
-    else if (hasNote) setSection("vault");
-  };
+    new Chart(els.completionChart, {
+      type: "doughnut",
+      data: {
+        labels: [`Done ${completionRate}%`, "Pending"],
+        datasets: [
+          {
+            data: [completed, pending || 1],
+            backgroundColor: ["#49d88a", "#2f3f75"]
+          }
+        ]
+      },
+      options: {
+        plugins: {
+          legend: { labels: { color: "#d9e4ff" } }
+        }
+      }
+    });
+  }
 }
 
-function formatTime(totalSeconds) {
-  const m = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-  const s = String(totalSeconds % 60).padStart(2, "0");
-  return `${m}:${s}`;
+function openSection(id) {
+  currentSection = id;
+  els.sections.forEach((section) => {
+    section.classList.toggle("active", section.id === id);
+  });
+  els.navBtns.forEach((btn) => {
+    const active = btn.dataset.section === id;
+    btn.classList.toggle("active", active);
+  });
+  const selectedBtn = [...els.navBtns].find((btn) => btn.dataset.section === id);
+  els.sectionTitle.textContent = selectedBtn ? selectedBtn.textContent : "Dashboard";
 }
 
-function init() {
-  byId("studentName").value = state.profile.name;
-  byId("studentLevel").value = state.profile.level;
-  byId("timerDisplay").textContent = formatTime(timeLeft);
-  bindEvents();
-  renderQuote();
-  renderAll();
+function tickTimer() {
+  timer.remainingSeconds -= 1;
+  if (timer.remainingSeconds <= 0) {
+    if (timer.mode === "focus") {
+      state.pomodoroCount += 1;
+      state.streak = Math.max(1, state.streak + 1);
+      state.weeklyMinutes[(new Date().getDay() + 6) % 7] += state.focusMinutes;
+      showToast("Focus session complete");
+    } else {
+      showToast("Break complete");
+    }
+    timer.mode = timer.mode === "focus" ? "break" : "focus";
+    timer.remainingSeconds = activeDurationMinutes() * 60;
+    persist();
+    renderDashboard();
+    renderAnalytics();
+  }
+  updateTimerDisplay();
 }
 
-init();
+function activeDurationMinutes() {
+  return timer.mode === "focus" ? state.focusMinutes : state.breakMinutes;
+}
+
+function updateTimerDisplay() {
+  const mins = Math.floor(timer.remainingSeconds / 60);
+  const secs = timer.remainingSeconds % 60;
+  els.timerDisplay.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  els.timerModeLabel.textContent = timer.mode === "focus" ? "Focus mode" : "Break mode";
+  els.pomodoroCount.textContent = String(state.pomodoroCount);
+}
+
+function clearTimerInterval() {
+  if (timer.intervalId !== null) {
+    window.clearInterval(timer.intervalId);
+    timer.intervalId = null;
+  }
+}
+
+function getActiveDeck() {
+  return state.decks.find((deck) => deck.id === state.activeDeckId) || null;
+}
+
+function showToast(message) {
+  els.toast.textContent = message;
+  els.toast.classList.add("show");
+  if (toastTimerId) {
+    clearTimeout(toastTimerId);
+  }
+  toastTimerId = window.setTimeout(() => {
+    els.toast.classList.remove("show");
+  }, 1800);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) {
+      return structuredClone(defaults);
+    }
+    const parsed = JSON.parse(raw);
+    return {
+      ...structuredClone(defaults),
+      ...parsed
+    };
+  } catch {
+    return structuredClone(defaults);
+  }
+}
+
+function persist() {
+  localStorage.setItem(storageKey, JSON.stringify(state));
+}
+
+function buildQuizOptions(correctAnswer) {
+  const distractors = state.quizItems
+    .map((entry) => entry.answer)
+    .filter((answer) => answer !== correctAnswer)
+    .slice(0, 3);
+  const options = [correctAnswer, ...distractors];
+  while (options.length < 4) {
+    options.push(`Option ${options.length + 1}`);
+  }
+  return options.sort(() => Math.random() - 0.5);
+}
+
+function destroyChart(canvasEl) {
+  const chart = Chart.getChart(canvasEl);
+  if (chart) {
+    chart.destroy();
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function escapeHtmlAttr(value) {
+  return escapeHtml(value).replaceAll("`", "&#96;");
+}
+

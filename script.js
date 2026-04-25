@@ -1,1160 +1,859 @@
-const storageKey = "simboStudyOS.v1";
-const AI_CONFIG = {
-  provider: "gemini", // "gemini" or "openai"
-  apiKey: "YOUR_API_KEY_HERE",
-  // Optional: set proxy URL if you use your own secure relay.
-  // Example: "https://your-proxy.example.com/v1/chat/completions"
-  proxyUrl: "",
-  geminiModel: "gemini-1.5-flash",
-  openAiModel: "gpt-4o-mini",
-  maxContextMessages: 14
-};
-const defaults = {
-  tasks: [],
-  notes: [],
-  decks: [],
-  sessions: 0,
-  streak: 0,
-  focusMinutes: 25,
-  breakMinutes: 5,
-  pomodoroCount: 0,
-  quizItems: [],
-  weeklyMinutes: [30, 45, 60, 35, 75, 90, 50],
-  activeDeckId: null,
-  profile: {
-    name: "Scholar",
-    goal: "Stay consistent with daily deep work",
-    bio: ""
-  },
-  simbaChat: []
-};
-
-const state = loadState();
-let currentSection = "dashboard";
-let timer = {
-  mode: "focus",
-  remainingSeconds: state.focusMinutes * 60,
-  running: false,
-  intervalId: null
-};
-let quizRun = null;
-let flashcardIndex = 0;
-let toastTimerId = null;
-let simbaRequestInFlight = false;
-
-const els = {
-  sectionTitle: document.getElementById("sectionTitle"),
-  userNameDisplay: document.getElementById("userNameDisplay"),
-  userGoalDisplay: document.getElementById("userGoalDisplay"),
-  navMenu: document.getElementById("navMenu"),
-  sections: document.querySelectorAll(".section"),
-  navBtns: document.querySelectorAll(".nav-btn"),
-  quickSectionButtons: document.querySelectorAll("[data-section-target]"),
-  focusModeToggle: document.getElementById("focusModeToggle"),
-  globalSearch: document.getElementById("globalSearch"),
-  openProfileBtn: document.getElementById("openProfileBtn"),
-  quickAddTask: document.getElementById("quickAddTask"),
-  profileModal: document.getElementById("profileModal"),
-  closeProfileBtn: document.getElementById("closeProfileBtn"),
-  profileForm: document.getElementById("profileForm"),
-  profileName: document.getElementById("profileName"),
-  profileGoal: document.getElementById("profileGoal"),
-  profileBio: document.getElementById("profileBio"),
-  profileAvatarPreview: document.getElementById("profileAvatarPreview"),
-  toast: document.getElementById("toast"),
-  taskForm: document.getElementById("taskForm"),
-  taskTitle: document.getElementById("taskTitle"),
-  taskDeadline: document.getElementById("taskDeadline"),
-  taskFilter: document.getElementById("taskFilter"),
-  taskList: document.getElementById("taskList"),
-  todayAgenda: document.getElementById("todayAgenda"),
-  kpiStreak: document.getElementById("kpiStreak"),
-  kpiSessions: document.getElementById("kpiSessions"),
-  kpiHours: document.getElementById("kpiHours"),
-  kpiGoals: document.getElementById("kpiGoals"),
-  timerDisplay: document.getElementById("timerDisplay"),
-  timerModeLabel: document.getElementById("timerModeLabel"),
-  timerStartPause: document.getElementById("timerStartPause"),
-  timerReset: document.getElementById("timerReset"),
-  timerSwitch: document.getElementById("timerSwitch"),
-  focusMinutes: document.getElementById("focusMinutes"),
-  breakMinutes: document.getElementById("breakMinutes"),
-  saveTimerSettings: document.getElementById("saveTimerSettings"),
-  pomodoroCount: document.getElementById("pomodoroCount"),
-  deckForm: document.getElementById("deckForm"),
-  deckName: document.getElementById("deckName"),
-  deckList: document.getElementById("deckList"),
-  activeDeckTitle: document.getElementById("activeDeckTitle"),
-  cardForm: document.getElementById("cardForm"),
-  cardFront: document.getElementById("cardFront"),
-  cardBack: document.getElementById("cardBack"),
-  flashcard: document.getElementById("flashcard"),
-  prevCard: document.getElementById("prevCard"),
-  nextCard: document.getElementById("nextCard"),
-  cardCounter: document.getElementById("cardCounter"),
-  noteForm: document.getElementById("noteForm"),
-  noteTitle: document.getElementById("noteTitle"),
-  noteBody: document.getElementById("noteBody"),
-  noteSearch: document.getElementById("noteSearch"),
-  notesGrid: document.getElementById("notesGrid"),
-  quizForm: document.getElementById("quizForm"),
-  quizTopic: document.getElementById("quizTopic"),
-  quizQuestion: document.getElementById("quizQuestion"),
-  quizAnswer: document.getElementById("quizAnswer"),
-  startQuiz: document.getElementById("startQuiz"),
-  quizStatus: document.getElementById("quizStatus"),
-  quizPanel: document.getElementById("quizPanel"),
-  weeklyChart: document.getElementById("weeklyChart"),
-  completionChart: document.getElementById("completionChart"),
-  simbaFab: document.getElementById("simbaFab"),
-  simbaBackdrop: document.getElementById("simbaBackdrop"),
-  simbaPanel: document.getElementById("simbaPanel"),
-  simbaForm: document.getElementById("simbaForm"),
-  simbaInput: document.getElementById("simbaInput"),
-  simbaSend: document.querySelector("#simbaForm button[type='submit']"),
-  simbaMessages: document.getElementById("simbaMessages"),
-  simbaTyping: document.getElementById("simbaTyping"),
-  simbaClose: document.getElementById("simbaClose"),
-  simbaClear: document.getElementById("simbaClear")
-};
-
-bootstrap();
-
-function bootstrap() {
-  bindNavigation();
-  bindPlanner();
-  bindTimer();
-  bindFlashcards();
-  bindNotes();
-  bindQuiz();
-  bindProfile();
-  bindSimba();
-  bindGlobalControls();
-  bindMicroInteractions();
-  renderAll();
-  requestAnimationFrame(() => {
-    document.body.classList.add("ready");
-  });
-}
-
-function bindNavigation() {
-  els.navMenu.addEventListener("click", (event) => {
-    const btn = event.target.closest(".nav-btn");
-    if (!btn) {
-      return;
-    }
-    openSection(btn.dataset.section);
-  });
-
-  els.quickSectionButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      openSection(btn.dataset.sectionTarget);
-    });
-  });
-}
-
-function bindPlanner() {
-  els.taskForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const title = els.taskTitle.value.trim();
-    if (!title) {
-      return;
-    }
-    const task = {
-      id: crypto.randomUUID(),
-      title,
-      deadline: els.taskDeadline.value || null,
-      done: false,
-      createdAt: Date.now()
-    };
-    state.tasks.unshift(task);
-    els.taskForm.reset();
-    persist();
-    renderPlanner();
-    renderDashboard();
-    renderAnalytics();
-    showToast("Task added");
-  });
-
-  els.taskFilter.addEventListener("change", renderPlanner);
-  els.taskList.addEventListener("click", (event) => {
-    const item = event.target.closest("[data-task-id]");
-    if (!item) {
-      return;
-    }
-    const taskId = item.dataset.taskId;
-    const task = state.tasks.find((entry) => entry.id === taskId);
-    if (!task) {
-      return;
-    }
-    if (event.target.matches("[data-action='toggle']")) {
-      task.done = !task.done;
-      persist();
-      renderPlanner();
-      renderDashboard();
-      renderAnalytics();
-      return;
-    }
-    if (event.target.matches("[data-action='delete']")) {
-      state.tasks = state.tasks.filter((entry) => entry.id !== taskId);
-      persist();
-      renderPlanner();
-      renderDashboard();
-      renderAnalytics();
-      showToast("Task removed");
-    }
-  });
-}
-
-function bindTimer() {
-  els.focusMinutes.value = state.focusMinutes;
-  els.breakMinutes.value = state.breakMinutes;
-  updateTimerDisplay();
-  els.pomodoroCount.textContent = String(state.pomodoroCount);
-
-  els.timerStartPause.addEventListener("click", () => {
-    timer.running = !timer.running;
-    els.timerStartPause.textContent = timer.running ? "Pause" : "Start";
-    if (timer.running) {
-      timer.intervalId = window.setInterval(tickTimer, 1000);
-      state.sessions += 1;
-      persist();
-      renderDashboard();
-    } else {
-      clearTimerInterval();
-    }
-  });
-
-  els.timerReset.addEventListener("click", () => {
-    clearTimerInterval();
-    timer.running = false;
-    els.timerStartPause.textContent = "Start";
-    timer.remainingSeconds = activeDurationMinutes() * 60;
-    updateTimerDisplay();
-  });
-
-  els.timerSwitch.addEventListener("click", () => {
-    clearTimerInterval();
-    timer.running = false;
-    els.timerStartPause.textContent = "Start";
-    timer.mode = timer.mode === "focus" ? "break" : "focus";
-    timer.remainingSeconds = activeDurationMinutes() * 60;
-    updateTimerDisplay();
-  });
-
-  els.saveTimerSettings.addEventListener("click", () => {
-    const focus = Number(els.focusMinutes.value);
-    const brk = Number(els.breakMinutes.value);
-    if (!Number.isFinite(focus) || !Number.isFinite(brk) || focus < 1 || brk < 1) {
-      showToast("Enter valid timer values");
-      return;
-    }
-    state.focusMinutes = focus;
-    state.breakMinutes = brk;
-    if (!timer.running) {
-      timer.remainingSeconds = activeDurationMinutes() * 60;
-      updateTimerDisplay();
-    }
-    persist();
-    showToast("Timer settings saved");
-  });
-}
-
-function bindFlashcards() {
-  els.deckForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const name = els.deckName.value.trim();
-    if (!name) {
-      return;
-    }
-    const deck = {
-      id: crypto.randomUUID(),
-      name,
-      cards: []
-    };
-    state.decks.push(deck);
-    state.activeDeckId = deck.id;
-    els.deckForm.reset();
-    flashcardIndex = 0;
-    persist();
-    renderFlashcards();
-    showToast("Deck created");
-  });
-
-  els.deckList.addEventListener("click", (event) => {
-    const row = event.target.closest("[data-deck-id]");
-    if (!row) {
-      return;
-    }
-    const deckId = row.dataset.deckId;
-    if (event.target.matches("[data-action='open']")) {
-      state.activeDeckId = deckId;
-      flashcardIndex = 0;
-      persist();
-      renderFlashcards();
-      return;
-    }
-    if (event.target.matches("[data-action='delete']")) {
-      state.decks = state.decks.filter((deck) => deck.id !== deckId);
-      if (state.activeDeckId === deckId) {
-        state.activeDeckId = state.decks[0]?.id || null;
-        flashcardIndex = 0;
-      }
-      persist();
-      renderFlashcards();
-      showToast("Deck deleted");
-    }
-  });
-
-  els.cardForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const activeDeck = getActiveDeck();
-    if (!activeDeck) {
-      showToast("Create or select a deck first");
-      return;
-    }
-    const front = els.cardFront.value.trim();
-    const back = els.cardBack.value.trim();
-    if (!front || !back) {
-      return;
-    }
-    activeDeck.cards.push({
-      id: crypto.randomUUID(),
-      front,
-      back
-    });
-    els.cardForm.reset();
-    flashcardIndex = Math.max(0, activeDeck.cards.length - 1);
-    persist();
-    renderFlashcards();
-    showToast("Card added");
-  });
-
-  els.prevCard.addEventListener("click", () => {
-    const activeDeck = getActiveDeck();
-    if (!activeDeck || activeDeck.cards.length === 0) {
-      return;
-    }
-    flashcardIndex = (flashcardIndex - 1 + activeDeck.cards.length) % activeDeck.cards.length;
-    renderFlashcardFace();
-  });
-
-  els.nextCard.addEventListener("click", () => {
-    const activeDeck = getActiveDeck();
-    if (!activeDeck || activeDeck.cards.length === 0) {
-      return;
-    }
-    flashcardIndex = (flashcardIndex + 1) % activeDeck.cards.length;
-    renderFlashcardFace();
-  });
-
-  els.flashcard.addEventListener("click", () => {
-    els.flashcard.classList.toggle("flipped");
-  });
-
-  els.flashcard.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      els.flashcard.classList.toggle("flipped");
-    }
-  });
-}
-
-function bindNotes() {
-  els.noteForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const title = els.noteTitle.value.trim();
-    const body = els.noteBody.value.trim();
-    if (!title) {
-      return;
-    }
-    const note = {
-      id: crypto.randomUUID(),
-      title,
-      body,
-      createdAt: Date.now()
-    };
-    state.notes.unshift(note);
-    els.noteForm.reset();
-    persist();
-    renderNotes();
-    showToast("Note saved");
-  });
-
-  els.noteSearch.addEventListener("input", renderNotes);
-  els.notesGrid.addEventListener("click", (event) => {
-    const row = event.target.closest("[data-note-id]");
-    if (!row) {
-      return;
-    }
-    if (!event.target.matches("[data-action='delete']")) {
-      return;
-    }
-    const id = row.dataset.noteId;
-    state.notes = state.notes.filter((note) => note.id !== id);
-    persist();
-    renderNotes();
-    showToast("Note removed");
-  });
-}
-
-function bindQuiz() {
-  els.quizForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const topic = els.quizTopic.value.trim();
-    const question = els.quizQuestion.value.trim();
-    const answer = els.quizAnswer.value.trim();
-    if (!topic || !question || !answer) {
-      return;
-    }
-    state.quizItems.push({
-      id: crypto.randomUUID(),
-      topic,
-      question,
-      answer
-    });
-    els.quizForm.reset();
-    persist();
-    renderQuiz();
-    showToast("Quiz item added");
-  });
-
-  els.startQuiz.addEventListener("click", () => {
-    if (state.quizItems.length === 0) {
-      showToast("Add quiz items first");
-      return;
-    }
-    const shuffled = [...state.quizItems].sort(() => Math.random() - 0.5).slice(0, 5);
-    quizRun = {
-      index: 0,
-      score: 0,
-      items: shuffled
-    };
-    renderQuizRun();
-  });
-
-  els.quizPanel.addEventListener("click", (event) => {
-    if (!quizRun) {
-      return;
-    }
-    const btn = event.target.closest("[data-answer]");
-    if (!btn) {
-      return;
-    }
-    const current = quizRun.items[quizRun.index];
-    const answer = btn.dataset.answer;
-    if (answer === current.answer) {
-      quizRun.score += 1;
-    }
-    quizRun.index += 1;
-    if (quizRun.index >= quizRun.items.length) {
-      const result = quizRun;
-      quizRun = null;
-      els.quizStatus.textContent = `Score ${result.score}/${result.items.length}`;
-      els.quizPanel.innerHTML = `<p>Done. You scored <strong>${result.score}/${result.items.length}</strong>.</p>`;
-      return;
-    }
-    renderQuizRun();
-  });
-}
-
-function bindGlobalControls() {
-  els.quickAddTask.addEventListener("click", () => {
-    openSection("planner");
-    els.taskTitle.focus();
-  });
-
-  els.focusModeToggle.addEventListener("click", () => {
-    const active = document.body.classList.toggle("focus-mode");
-    els.focusModeToggle.textContent = active ? "Exit Focus Mode" : "Enter Focus Mode";
-    els.focusModeToggle.setAttribute("aria-pressed", active ? "true" : "false");
-  });
-
-  els.globalSearch.addEventListener("input", () => {
-    const query = els.globalSearch.value.trim().toLowerCase();
-    if (!query) {
-      return;
-    }
-    if (state.tasks.some((task) => task.title.toLowerCase().includes(query))) {
-      openSection("planner");
-      return;
-    }
-    if (state.notes.some((note) => `${note.title} ${note.body}`.toLowerCase().includes(query))) {
-      openSection("notes");
-      return;
-    }
-    if (state.decks.some((deck) => deck.name.toLowerCase().includes(query))) {
-      openSection("flashcards");
-      return;
-    }
-  });
-}
-
-function bindProfile() {
-  els.openProfileBtn.addEventListener("click", openProfileModal);
-  els.closeProfileBtn.addEventListener("click", closeProfileModal);
-  els.profileModal.addEventListener("click", (event) => {
-    if (event.target === els.profileModal) {
-      closeProfileModal();
-    }
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeProfileModal();
-      closeSimbaPanel();
-    }
-  });
-  els.profileForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const name = els.profileName.value.trim() || "Scholar";
-    const goal = els.profileGoal.value.trim() || "Stay consistent with daily deep work";
-    const bio = els.profileBio.value.trim();
-    state.profile = { name, goal, bio };
-    persist();
-    renderProfile();
-    closeProfileModal();
-    showToast("Profile saved");
-  });
-}
-
-function bindSimba() {
-  els.simbaFab.addEventListener("click", () => {
-    const willOpen = !els.simbaPanel.classList.contains("open");
-    if (willOpen) {
-      openSimbaPanel();
-    } else {
-      closeSimbaPanel();
-    }
-  });
-  els.simbaClose.addEventListener("click", closeSimbaPanel);
-  els.simbaBackdrop.addEventListener("click", closeSimbaPanel);
-  els.simbaClear.addEventListener("click", () => {
-    state.simbaChat = [];
-    persist();
-    renderSimbaMessages();
-    addAssistantMessage("Chat cleared. I am ready to help you study with a focused strategy.");
-  });
-  els.simbaForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (simbaRequestInFlight) {
-      return;
-    }
-    const text = els.simbaInput.value.trim();
-    if (!text) {
-      return;
-    }
-    addUserMessage(text);
-    els.simbaInput.value = "";
-    setSimbaLoading(true);
-    try {
-      const answer = await requestSimbaReply();
-      addAssistantMessage(answer);
-    } catch {
-      addAssistantMessage("Simba is temporarily unavailable. Please try again.");
-    } finally {
-      setSimbaLoading(false);
-    }
-  });
-}
-
-function bindMicroInteractions() {
-  const cards = document.querySelectorAll(".card-elevated, .metric-card, .hero");
-  cards.forEach((card) => {
-    card.addEventListener("mousemove", (event) => {
-      const rect = card.getBoundingClientRect();
-      const px = (event.clientX - rect.left) / rect.width;
-      const py = (event.clientY - rect.top) / rect.height;
-      card.style.setProperty("--mx", `${px}`);
-      card.style.setProperty("--my", `${py}`);
-    });
-    card.addEventListener("mouseleave", () => {
-      card.style.removeProperty("--mx");
-      card.style.removeProperty("--my");
-    });
-  });
-}
-
-function renderAll() {
-  renderProfile();
-  renderDashboard();
-  renderPlanner();
-  renderTimer();
-  renderFlashcards();
-  renderNotes();
-  renderQuiz();
-  renderAnalytics();
-  renderSimbaMessages();
-}
-
-function renderDashboard() {
-  els.kpiStreak.textContent = `${state.streak} days`;
-  els.kpiSessions.textContent = String(state.sessions);
-  const hours = (state.weeklyMinutes.reduce((sum, min) => sum + min, 0) / 60).toFixed(1);
-  els.kpiHours.textContent = `${hours}h`;
-  els.kpiGoals.textContent = String(state.tasks.filter((task) => !task.done).length);
-
-  const agendaItems = state.tasks
-    .filter((task) => !task.done)
-    .sort((a, b) => Number(new Date(a.deadline || "2999-12-31")) - Number(new Date(b.deadline || "2999-12-31")))
-    .slice(0, 5);
-
-  els.todayAgenda.innerHTML = agendaItems.length
-    ? agendaItems
-        .map((task) => {
-          const deadline = task.deadline ? new Date(task.deadline).toLocaleDateString() : "No deadline";
-          return `<li class="list-item"><span>${escapeHtml(task.title)}</span><small>${deadline}</small></li>`;
-        })
-        .join("")
-    : '<li class="list-item"><span>No tasks yet. Add one in Planner.</span></li>';
-}
-
-function renderPlanner() {
-  const filter = els.taskFilter.value;
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const visibleTasks = state.tasks.filter((task) => {
-    if (filter === "todo") {
-      return !task.done;
-    }
-    if (filter === "done") {
-      return task.done;
-    }
-    if (filter === "overdue") {
-      if (!task.deadline || task.done) {
-        return false;
-      }
-      return new Date(task.deadline) < now;
-    }
-    return true;
-  });
-
-  els.taskList.innerHTML = visibleTasks.length
-    ? visibleTasks
-        .map((task) => {
-          const isOverdue = Boolean(task.deadline && !task.done && new Date(task.deadline) < now);
-          const due = task.deadline ? new Date(task.deadline).toLocaleDateString() : "No deadline";
-          const badge = task.done ? "success" : isOverdue ? "danger" : "warn";
-          const label = task.done ? "Done" : isOverdue ? "Overdue" : "Active";
-          return `
-            <li class="list-item" data-task-id="${task.id}">
-              <div>
-                <strong>${escapeHtml(task.title)}</strong>
-                <div class="task-meta">
-                  <small>${due}</small>
-                  <span class="badge ${badge}">${label}</span>
-                </div>
-              </div>
-              <div class="inline-controls">
-                <button class="btn small ghost" data-action="toggle">${task.done ? "Undo" : "Done"}</button>
-                <button class="btn small ghost" data-action="delete">Delete</button>
-              </div>
-            </li>`;
-        })
-        .join("")
-    : '<li class="list-item"><span>No tasks in this view.</span></li>';
-}
-
-function renderTimer() {
-  updateTimerDisplay();
-  els.timerModeLabel.textContent = timer.mode === "focus" ? "Focus mode" : "Break mode";
-  els.pomodoroCount.textContent = String(state.pomodoroCount);
-}
-
-function renderFlashcards() {
-  const activeDeck = getActiveDeck();
-  els.deckList.innerHTML = state.decks.length
-    ? state.decks
-        .map((deck) => {
-          const selected = deck.id === state.activeDeckId ? " (active)" : "";
-          return `
-            <li class="list-item" data-deck-id="${deck.id}">
-              <div>
-                <strong>${escapeHtml(deck.name)}${selected}</strong>
-                <small>${deck.cards.length} cards</small>
-              </div>
-              <div class="inline-controls">
-                <button class="btn small ghost" data-action="open">Open</button>
-                <button class="btn small ghost" data-action="delete">Delete</button>
-              </div>
-            </li>`;
-        })
-        .join("")
-    : '<li class="list-item"><span>No decks yet.</span></li>';
-
-  els.activeDeckTitle.textContent = activeDeck ? `Card Studio - ${activeDeck.name}` : "Card Studio";
-  if (activeDeck && flashcardIndex >= activeDeck.cards.length) {
-    flashcardIndex = Math.max(0, activeDeck.cards.length - 1);
-  }
-  renderFlashcardFace();
-}
-
-function renderFlashcardFace() {
-  const activeDeck = getActiveDeck();
-  const frontEl = els.flashcard.querySelector(".flashcard-front");
-  const backEl = els.flashcard.querySelector(".flashcard-back");
-  els.flashcard.classList.remove("flipped");
-  if (!activeDeck || activeDeck.cards.length === 0) {
-    frontEl.textContent = activeDeck ? "Add cards to begin" : "Select a deck";
-    backEl.textContent = "Create your first flashcard";
-    els.cardCounter.textContent = "0 / 0";
-    return;
-  }
-  const card = activeDeck.cards[flashcardIndex];
-  frontEl.textContent = card.front;
-  backEl.textContent = card.back;
-  els.cardCounter.textContent = `${flashcardIndex + 1} / ${activeDeck.cards.length}`;
-}
-
-function renderNotes() {
-  const query = els.noteSearch.value.trim().toLowerCase();
-  const filtered = state.notes.filter((note) => {
-    if (!query) {
-      return true;
-    }
-    return `${note.title} ${note.body}`.toLowerCase().includes(query);
-  });
-  els.notesGrid.innerHTML = filtered.length
-    ? filtered
-        .map((note) => {
-          return `
-            <article class="note-card" data-note-id="${note.id}">
-              <h4>${escapeHtml(note.title)}</h4>
-              <p>${escapeHtml(note.body || "No content")}</p>
-              <div class="inline-controls" style="margin-top: 8px;">
-                <button class="btn small ghost" data-action="delete">Delete</button>
-              </div>
-            </article>`;
-        })
-        .join("")
-    : '<p class="subtle">No notes found.</p>';
-}
-
-function renderQuiz() {
-  els.quizStatus.textContent = state.quizItems.length ? `${state.quizItems.length} questions ready` : "No active quiz";
-  if (!quizRun) {
-    els.quizPanel.innerHTML = state.quizItems.length
-      ? "<p>Select <strong>Start Quiz</strong> to begin.</p>"
-      : "<p>Add at least one question to run a quiz.</p>";
-  }
-}
-
-function renderQuizRun() {
-  if (!quizRun) {
-    return;
-  }
-  const current = quizRun.items[quizRun.index];
-  const options = buildQuizOptions(current.answer);
-  els.quizStatus.textContent = `Question ${quizRun.index + 1}/${quizRun.items.length}`;
-  els.quizPanel.innerHTML = `
-    <p><strong>${escapeHtml(current.topic)}</strong></p>
-    <p>${escapeHtml(current.question)}</p>
-    <div class="quiz-options">
-      ${options.map((option) => `<button class="btn ghost" data-answer="${escapeHtmlAttr(option)}">${escapeHtml(option)}</button>`).join("")}
-    </div>
-  `;
-}
-
-function renderAnalytics() {
-  const completed = state.tasks.filter((task) => task.done).length;
-  const total = state.tasks.length;
-  const pending = Math.max(total - completed, 0);
-  const completionRate = total ? Math.round((completed / total) * 100) : 0;
-
-  destroyChart(els.weeklyChart);
-  destroyChart(els.completionChart);
-
-  if (typeof Chart !== "undefined") {
-    new Chart(els.weeklyChart, {
-      type: "line",
-      data: {
-        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-        datasets: [
-          {
-            label: "Minutes",
-            data: state.weeklyMinutes,
-            borderColor: "#7aa0ff",
-            backgroundColor: "rgba(122, 160, 255, 0.2)",
-            tension: 0.35,
-            fill: true
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          legend: { labels: { color: "#d9e4ff" } }
-        },
-        scales: {
-          x: { ticks: { color: "#a9bcf7" }, grid: { color: "rgba(151, 173, 255, 0.08)" } },
-          y: { ticks: { color: "#a9bcf7" }, grid: { color: "rgba(151, 173, 255, 0.08)" } }
-        }
-      }
-    });
-
-    new Chart(els.completionChart, {
-      type: "doughnut",
-      data: {
-        labels: [`Done ${completionRate}%`, "Pending"],
-        datasets: [
-          {
-            data: [completed, pending || 1],
-            backgroundColor: ["#49d88a", "#2f3f75"]
-          }
-        ]
-      },
-      options: {
-        plugins: {
-          legend: { labels: { color: "#d9e4ff" } }
-        }
-      }
-    });
-  }
-}
-
-function openSection(id) {
-  currentSection = id;
-  els.sections.forEach((section) => {
-    section.classList.toggle("active", section.id === id);
-  });
-  els.navBtns.forEach((btn) => {
-    const active = btn.dataset.section === id;
-    btn.classList.toggle("active", active);
-  });
-  const selectedBtn = [...els.navBtns].find((btn) => btn.dataset.section === id);
-  els.sectionTitle.textContent = selectedBtn ? selectedBtn.textContent : "Dashboard";
-  const activeSection = document.getElementById(id);
-  if (activeSection) {
-    activeSection.animate(
-      [
-        { opacity: 0.65, transform: "translateY(8px)" },
-        { opacity: 1, transform: "translateY(0)" }
-      ],
-      { duration: 260, easing: "ease-out" }
-    );
-  }
-}
-
-function tickTimer() {
-  timer.remainingSeconds -= 1;
-  if (timer.remainingSeconds <= 0) {
-    if (timer.mode === "focus") {
-      state.pomodoroCount += 1;
-      state.streak = Math.max(1, state.streak + 1);
-      state.weeklyMinutes[(new Date().getDay() + 6) % 7] += state.focusMinutes;
-      showToast("Focus session complete");
-    } else {
-      showToast("Break complete");
-    }
-    timer.mode = timer.mode === "focus" ? "break" : "focus";
-    timer.remainingSeconds = activeDurationMinutes() * 60;
-    persist();
-    renderDashboard();
-    renderAnalytics();
-  }
-  updateTimerDisplay();
-}
-
-function activeDurationMinutes() {
-  return timer.mode === "focus" ? state.focusMinutes : state.breakMinutes;
-}
-
-function updateTimerDisplay() {
-  const mins = Math.floor(timer.remainingSeconds / 60);
-  const secs = timer.remainingSeconds % 60;
-  els.timerDisplay.textContent = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  els.timerModeLabel.textContent = timer.mode === "focus" ? "Focus mode" : "Break mode";
-  els.pomodoroCount.textContent = String(state.pomodoroCount);
-}
-
-function clearTimerInterval() {
-  if (timer.intervalId !== null) {
-    window.clearInterval(timer.intervalId);
-    timer.intervalId = null;
-  }
-}
-
-function getActiveDeck() {
-  return state.decks.find((deck) => deck.id === state.activeDeckId) || null;
-}
-
-function showToast(message) {
-  els.toast.textContent = message;
-  els.toast.classList.add("show");
-  if (toastTimerId) {
-    clearTimeout(toastTimerId);
-  }
-  toastTimerId = window.setTimeout(() => {
-    els.toast.classList.remove("show");
-  }, 1800);
-}
-
-function renderProfile() {
-  const profile = sanitizeProfile(state.profile);
-  state.profile = profile;
-  els.userNameDisplay.textContent = profile.name;
-  els.userGoalDisplay.textContent = profile.goal;
-  els.profileName.value = profile.name;
-  els.profileGoal.value = profile.goal;
-  els.profileBio.value = profile.bio;
-  els.profileAvatarPreview.textContent = profile.name.charAt(0).toUpperCase();
-}
-
-function openProfileModal() {
-  renderProfile();
-  els.profileModal.classList.add("open");
-  els.profileModal.setAttribute("aria-hidden", "false");
-  els.profileName.focus();
-}
-
-function closeProfileModal() {
-  els.profileModal.classList.remove("open");
-  els.profileModal.setAttribute("aria-hidden", "true");
-}
-
-function openSimbaPanel() {
-  els.simbaBackdrop.classList.add("open");
-  els.simbaBackdrop.setAttribute("aria-hidden", "false");
-  els.simbaPanel.classList.add("open");
-  els.simbaPanel.setAttribute("aria-hidden", "false");
-  els.simbaInput.focus();
-  ensureSimbaStarter();
-  scrollSimbaToBottom();
-}
-
-function closeSimbaPanel() {
-  els.simbaBackdrop.classList.remove("open");
-  els.simbaBackdrop.setAttribute("aria-hidden", "true");
-  els.simbaPanel.classList.remove("open");
-  els.simbaPanel.setAttribute("aria-hidden", "true");
-  showSimbaTyping(false);
-}
-
-function ensureSimbaStarter() {
-  if (state.simbaChat.length > 0) {
-    return;
-  }
-  addAssistantMessage(`Hi ${sanitizeProfile(state.profile).name}, I am Simba. Ask me for study plans, Pomodoro guidance, or motivation.`);
-}
-
-function addUserMessage(text) {
-  state.simbaChat.push({ role: "user", text, ts: Date.now() });
-  trimSimbaHistory();
-  persist();
-  renderSimbaMessages();
-}
-
-function addAssistantMessage(text) {
-  state.simbaChat.push({ role: "assistant", text, ts: Date.now() });
-  trimSimbaHistory();
-  persist();
-  renderSimbaMessages();
-}
-
-function trimSimbaHistory() {
-  if (state.simbaChat.length > 120) {
-    state.simbaChat = state.simbaChat.slice(-120);
-  }
-}
-
-function renderSimbaMessages() {
-  if (!Array.isArray(state.simbaChat) || state.simbaChat.length === 0) {
-    els.simbaMessages.innerHTML = '<p class="subtle">Start a conversation with Simba.</p>';
-    return;
-  }
-  els.simbaMessages.innerHTML = state.simbaChat
-    .map((item) => `<div class="simba-bubble ${item.role}">${escapeHtml(item.text)}</div>`)
-    .join("");
-  scrollSimbaToBottom();
-}
-
-function showSimbaTyping(isVisible) {
-  els.simbaTyping.classList.toggle("show", isVisible);
-}
-
-function setSimbaLoading(isLoading) {
-  simbaRequestInFlight = isLoading;
-  showSimbaTyping(isLoading);
-  els.simbaInput.disabled = isLoading;
-  els.simbaSend.disabled = isLoading;
-  els.simbaSend.textContent = isLoading ? "Sending..." : "Send";
-}
-
-function scrollSimbaToBottom() {
-  els.simbaMessages.scrollTop = els.simbaMessages.scrollHeight;
-}
-
-function sanitizeProfile(profile) {
-  const safe = profile && typeof profile === "object" ? profile : {};
-  return {
-    name: typeof safe.name === "string" && safe.name.trim() ? safe.name.trim().slice(0, 40) : "Scholar",
-    goal: typeof safe.goal === "string" && safe.goal.trim() ? safe.goal.trim().slice(0, 100) : "Stay consistent with daily deep work",
-    bio: typeof safe.bio === "string" ? safe.bio.trim().slice(0, 180) : ""
+/**
+ * SimbaStudy OS - Complete JavaScript Engine
+ * Fully functional gamified learning dashboard logic
+ * No demo data, no HTML generation, pure application logic
+ * Designed to work with the SimbaStudy mobile dashboard UI
+ */
+
+(function() {
+  'use strict';
+
+  // ============================================================
+  // 1. APPLICATION STATE (Single Source of Truth)
+  // ============================================================
+  const state = {
+    // Streak & Daily Tracking
+    streak: 0,
+    studiedToday: false,
+    lastStudyDate: null,        // Date string (toDateString())
+
+    // Quiz Performance
+    totalQuizzesTaken: 0,
+    totalCorrectAnswers: 0,
+    quizAccuracy: 0,            // Percentage 0-100
+
+    // XP & Leveling System
+    xp: 0,
+    level: 1,
+    xpToNextLevel: 100,
+
+    // Study Time Tracking
+    weeklyStudyMinutes: [0, 0, 0, 0, 0, 0, 0], // Index 0=Sunday, 1=Monday, ..., 6=Saturday
+    totalStudyHours: 0,         // Cumulative decimal hours
+
+    // Focus Sessions
+    completedSessions: 0,
+    currentFocusMinutes: 0,
+    isFocusModeActive: false,
+    focusTimerInterval: null,
+    focusStartTime: null,
+
+    // User Profile
+    userName: 'Memo G',
+    userInitial: 'M',
+    avatarColor: '#FF8C42',
+
+    // Goals
+    activeGoals: 0,
+    goalsList: [],
+
+    // Notes & Flashcards
+    notesCount: 0,
+    flashcardsReviewed: 0,
+    totalFlashcards: 0,
+
+    // Settings
+    focusDuration: 25,          // Default Pomodoro length in minutes
+    shortBreakDuration: 5,
+    longBreakDuration: 15,
+    sessionsUntilLongBreak: 4,
+    currentSessionCount: 0,
   };
-}
 
-function buildSimbaSystemPrompt() {
-  const profile = sanitizeProfile(state.profile);
-  return `You are Simba, a highly intelligent and friendly study assistant inside a learning app.
-Help students study, explain concepts simply, build practical plans, and keep them motivated and disciplined.
-Keep answers clear, concise, and actionable.
-Address the user by name occasionally: ${profile.name}.
-Current user study goal: ${profile.goal}.
-If the user asks non-study questions, still respond helpfully and politely.`;
-}
+  // ============================================================
+  // 2. PERSISTENCE LAYER (LocalStorage)
+  // ============================================================
+  const STORAGE_KEY = 'simbaStudyState';
 
-function buildContextMessages() {
-  const max = AI_CONFIG.maxContextMessages;
-  const recent = state.simbaChat.slice(-max);
-  return recent
-    .filter((entry) => entry && (entry.role === "user" || entry.role === "assistant"))
-    .map((entry) => ({
-      role: entry.role,
-      content: entry.text
-    }));
-}
-
-async function requestSimbaReply() {
-  if (!AI_CONFIG.apiKey || AI_CONFIG.apiKey === "YOUR_API_KEY_HERE") {
-    throw new Error("Missing API key");
-  }
-  if (AI_CONFIG.provider === "openai") {
-    return requestOpenAiReply();
-  }
-  return requestGeminiReply();
-}
-
-async function requestGeminiReply() {
-  const endpoint = AI_CONFIG.proxyUrl
-    ? AI_CONFIG.proxyUrl
-    : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(AI_CONFIG.geminiModel)}:generateContent?key=${encodeURIComponent(AI_CONFIG.apiKey)}`;
-
-  const context = buildContextMessages();
-  const contents = [
-    {
-      role: "user",
-      parts: [{ text: buildSimbaSystemPrompt() }]
-    },
-    ...context.map((msg) => ({
-      role: msg.role === "assistant" ? "model" : "user",
-      parts: [{ text: msg.content }]
-    }))
-  ];
-
-  const response = await fetchWithRetry(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contents })
-  });
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!text) {
-    throw new Error("Invalid Gemini response");
-  }
-  return text;
-}
-
-async function requestOpenAiReply() {
-  const endpoint = AI_CONFIG.proxyUrl || "https://api.openai.com/v1/chat/completions";
-  const messages = [
-    { role: "system", content: buildSimbaSystemPrompt() },
-    ...buildContextMessages()
-  ];
-  const response = await fetchWithRetry(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${AI_CONFIG.apiKey}`
-    },
-    body: JSON.stringify({
-      model: AI_CONFIG.openAiModel,
-      messages,
-      temperature: 0.6
-    })
-  });
-  const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content?.trim();
-  if (!text) {
-    throw new Error("Invalid OpenAI response");
-  }
-  return text;
-}
-
-async function fetchWithRetry(url, options) {
-  const first = await fetch(url, options);
-  if (first.ok) {
-    return first;
-  }
-  if (first.status >= 500 || first.status === 429) {
-    await sleep(700);
-    const second = await fetch(url, options);
-    if (second.ok) {
-      return second;
+  function saveState() {
+    try {
+      const serialized = JSON.stringify(state);
+      localStorage.setItem(STORAGE_KEY, serialized);
+    } catch (error) {
+      console.error('SimbaStudy: Failed to save state to localStorage:', error);
     }
-    throw new Error(`API request failed: ${second.status}`);
   }
-  throw new Error(`API request failed: ${first.status}`);
-}
 
-function sleep(ms) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) {
-      return structuredClone(defaults);
+  function loadState() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Deep merge to preserve any new state properties
+        Object.keys(parsed).forEach(key => {
+          if (key in state) {
+            if (Array.isArray(state[key]) && Array.isArray(parsed[key])) {
+              // Replace array contents
+              state[key] = parsed[key];
+            } else if (typeof state[key] === 'object' && state[key] !== null && typeof parsed[key] === 'object' && parsed[key] !== null && !Array.isArray(state[key])) {
+              // Shallow merge objects
+              Object.assign(state[key], parsed[key]);
+            } else {
+              state[key] = parsed[key];
+            }
+          }
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('SimbaStudy: Failed to load state from localStorage:', error);
+      return false;
     }
-    const parsed = JSON.parse(raw);
+  }
+
+  function clearState() {
+    localStorage.removeItem(STORAGE_KEY);
+    // Reset to defaults
+    state.streak = 0;
+    state.studiedToday = false;
+    state.lastStudyDate = null;
+    state.totalQuizzesTaken = 0;
+    state.totalCorrectAnswers = 0;
+    state.quizAccuracy = 0;
+    state.xp = 0;
+    state.level = 1;
+    state.xpToNextLevel = 100;
+    state.weeklyStudyMinutes = [0, 0, 0, 0, 0, 0, 0];
+    state.totalStudyHours = 0;
+    state.completedSessions = 0;
+    state.currentFocusMinutes = 0;
+    state.isFocusModeActive = false;
+    state.activeGoals = 0;
+    state.goalsList = [];
+    state.notesCount = 0;
+    state.flashcardsReviewed = 0;
+    state.totalFlashcards = 0;
+    state.currentSessionCount = 0;
+    saveState();
+  }
+
+  // ============================================================
+  // 3. DAILY RESET LOGIC
+  // ============================================================
+  function getTodayString() {
+    return new Date().toDateString();
+  }
+
+  function getYesterdayString() {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday.toDateString();
+  }
+
+  function checkDailyReset() {
+    const today = getTodayString();
+    const yesterday = getYesterdayString();
+
+    // If last study date is neither today nor yesterday, streak is broken
+    if (state.lastStudyDate && state.lastStudyDate !== today && state.lastStudyDate !== yesterday) {
+      state.streak = 0;
+    }
+
+    // If it's a new day, reset studiedToday flag
+    if (state.lastStudyDate !== today) {
+      state.studiedToday = false;
+    }
+
+    saveState();
+  }
+
+  // ============================================================
+  // 4. XP & LEVELING SYSTEM
+  // ============================================================
+  function addXP(amount) {
+    if (amount <= 0) return { leveledUp: false, newLevel: state.level };
+
+    state.xp += amount;
+    let leveledUp = false;
+
+    // Handle multiple level-ups if XP gain is large
+    while (state.xp >= state.xpToNextLevel) {
+      state.xp -= state.xpToNextLevel;
+      state.level += 1;
+      state.xpToNextLevel = calculateXPForNextLevel(state.level);
+      leveledUp = true;
+    }
+
+    saveState();
+    return { leveledUp, newLevel: state.level, xpGained: amount };
+  }
+
+  function calculateXPForNextLevel(currentLevel) {
+    // Exponential scaling: each level requires 50% more XP than the previous
+    return Math.floor(100 * Math.pow(1.5, currentLevel - 1));
+  }
+
+  function getXPProgress() {
     return {
-      ...structuredClone(defaults),
-      ...parsed
+      currentXP: state.xp,
+      requiredXP: state.xpToNextLevel,
+      percentage: Math.round((state.xp / state.xpToNextLevel) * 100),
+      level: state.level,
     };
-  } catch {
-    return structuredClone(defaults);
   }
-}
 
-function persist() {
-  localStorage.setItem(storageKey, JSON.stringify(state));
-}
+  // ============================================================
+  // 5. STREAK & DAILY CONSISTENCY SYSTEM
+  // ============================================================
+  function recordStudyActivity(minutesStudied) {
+    if (minutesStudied <= 0) return;
 
-function buildQuizOptions(correctAnswer) {
-  const distractors = state.quizItems
-    .map((entry) => entry.answer)
-    .filter((answer) => answer !== correctAnswer)
-    .slice(0, 3);
-  const options = [correctAnswer, ...distractors];
-  while (options.length < 4) {
-    options.push(`Option ${options.length + 1}`);
+    const today = getTodayString();
+    const yesterday = getYesterdayString();
+
+    // Update studied today flag
+    if (!state.studiedToday) {
+      state.studiedToday = true;
+
+      // Streak logic
+      if (!state.lastStudyDate) {
+        // First time studying ever
+        state.streak = 1;
+      } else if (state.lastStudyDate === yesterday) {
+        // Consecutive day: increment streak
+        state.streak += 1;
+      } else if (state.lastStudyDate === today) {
+        // Already studied today, streak unchanged
+      } else {
+        // Missed day(s): reset streak to 1
+        state.streak = 1;
+      }
+
+      state.lastStudyDate = today;
+    }
+
+    // Update weekly study minutes
+    const dayOfWeek = new Date().getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+    state.weeklyStudyMinutes[dayOfWeek] += minutesStudied;
+
+    // Update total study hours
+    state.totalStudyHours += minutesStudied / 60;
+
+    // Award XP for studying (scales with time)
+    const xpEarned = Math.floor(minutesStudied / 5) * 2; // 2 XP per 5 minutes
+    const xpResult = addXP(xpEarned);
+
+    // Increment completed sessions if focus mode was used
+    if (state.isFocusModeActive) {
+      state.completedSessions += 1;
+      state.currentSessionCount += 1;
+    }
+
+    saveState();
+
+    return {
+      streakUpdated: state.streak,
+      studiedToday: state.studiedToday,
+      xpResult,
+      weeklyMinutes: getWeeklyStudyData(),
+    };
   }
-  return options.sort(() => Math.random() - 0.5);
-}
 
-function destroyChart(canvasEl) {
-  const chart = Chart.getChart(canvasEl);
-  if (chart) {
-    chart.destroy();
+  function getStreakData() {
+    return {
+      currentStreak: state.streak,
+      studiedToday: state.studiedToday,
+      lastStudyDate: state.lastStudyDate,
+      isStreakActive: state.streak > 0,
+    };
   }
-}
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
+  // ============================================================
+  // 6. FOCUS TIMER (POMODORO) SYSTEM
+  // ============================================================
+  function startFocusSession(durationMinutes) {
+    if (state.isFocusModeActive) {
+      return { success: false, message: 'Focus session already in progress' };
+    }
 
-function escapeHtmlAttr(value) {
-  return escapeHtml(value).replaceAll("`", "&#96;");
-}
+    const duration = durationMinutes || state.focusDuration;
+    state.isFocusModeActive = true;
+    state.focusStartTime = Date.now();
+    state.currentFocusMinutes = 0;
 
-const AI_CONFIG = {
-  provider: "gemini", // "gemini" or "openai"
-  apiKey: "YOUR_API_KEY_HERE",
-  proxyUrl: "",
-  geminiModel: "gemini-1.5-flash",
-  openAiModel: "gpt-4o-mini",
-  maxContextMessages: 14
-};
+    // Start the timer (ticks every second for precision)
+    state.focusTimerInterval = setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - state.focusStartTime) / 1000);
+      const elapsedMinutes = elapsedSeconds / 60;
+
+      if (elapsedMinutes >= duration) {
+        completeFocusSession(duration);
+      } else {
+        state.currentFocusMinutes = elapsedMinutes;
+        // Dispatch custom event for UI updates
+        dispatchFocusUpdate();
+      }
+    }, 1000);
+
+    saveState();
+    dispatchFocusUpdate();
+
+    return {
+      success: true,
+      duration,
+      startTime: state.focusStartTime,
+    };
+  }
+
+  function pauseFocusSession() {
+    if (!state.isFocusModeActive || !state.focusTimerInterval) {
+      return { success: false, message: 'No active focus session' };
+    }
+
+    clearInterval(state.focusTimerInterval);
+    state.focusTimerInterval = null;
+
+    // Calculate elapsed time and record it
+    const elapsedMinutes = Math.floor((Date.now() - state.focusStartTime) / 60000);
+    state.currentFocusMinutes = elapsedMinutes;
+
+    saveState();
+    dispatchFocusUpdate();
+
+    return {
+      success: true,
+      elapsedMinutes,
+      isPaused: true,
+    };
+  }
+
+  function resumeFocusSession(remainingMinutes) {
+    if (!state.isFocusModeActive) {
+      return { success: false, message: 'No focus session to resume' };
+    }
+
+    if (state.focusTimerInterval) {
+      return { success: false, message: 'Timer already running' };
+    }
+
+    const remaining = remainingMinutes || (state.focusDuration - state.currentFocusMinutes);
+    const startAdjustment = state.currentFocusMinutes * 60 * 1000;
+    state.focusStartTime = Date.now() - startAdjustment;
+
+    state.focusTimerInterval = setInterval(() => {
+      const elapsedMinutes = (Date.now() - state.focusStartTime) / 60000;
+      if (elapsedMinutes >= state.focusDuration) {
+        completeFocusSession(state.focusDuration);
+      } else {
+        state.currentFocusMinutes = elapsedMinutes;
+        dispatchFocusUpdate();
+      }
+    }, 1000);
+
+    saveState();
+    dispatchFocusUpdate();
+
+    return { success: true };
+  }
+
+  function completeFocusSession(durationMinutes) {
+    // Clear the interval
+    if (state.focusTimerInterval) {
+      clearInterval(state.focusTimerInterval);
+      state.focusTimerInterval = null;
+    }
+
+    state.isFocusModeActive = false;
+    state.currentFocusMinutes = durationMinutes;
+    state.completedSessions += 1;
+    state.currentSessionCount += 1;
+
+    // Record the study activity
+    const studyResult = recordStudyActivity(durationMinutes);
+
+    // Award bonus XP for completing a focus session
+    const bonusXP = 10;
+    const xpResult = addXP(bonusXP);
+
+    // Check if long break is needed
+    const needsLongBreak = state.currentSessionCount >= state.sessionsUntilLongBreak;
+    if (needsLongBreak) {
+      state.currentSessionCount = 0;
+    }
+
+    saveState();
+    dispatchFocusComplete(durationMinutes, needsLongBreak);
+
+    return {
+      duration: durationMinutes,
+      studyResult,
+      bonusXP: xpResult,
+      needsLongBreak,
+      totalSessions: state.completedSessions,
+    };
+  }
+
+  function cancelFocusSession() {
+    if (state.focusTimerInterval) {
+      clearInterval(state.focusTimerInterval);
+      state.focusTimerInterval = null;
+    }
+
+    // Record whatever time was spent
+    const elapsedMinutes = Math.floor(state.currentFocusMinutes);
+    if (elapsedMinutes > 0) {
+      recordStudyActivity(elapsedMinutes);
+    }
+
+    state.isFocusModeActive = false;
+    state.currentFocusMinutes = 0;
+
+    saveState();
+    dispatchFocusUpdate();
+
+    return { success: true, recordedMinutes: elapsedMinutes };
+  }
+
+  function getFocusState() {
+    return {
+      isActive: state.isFocusModeActive,
+      currentMinutes: state.currentFocusMinutes,
+      totalDuration: state.focusDuration,
+      remainingMinutes: Math.max(0, state.focusDuration - state.currentFocusMinutes),
+      progressPercent: state.focusDuration > 0 ? Math.min(100, (state.currentFocusMinutes / state.focusDuration) * 100) : 0,
+      completedSessions: state.completedSessions,
+      sessionsUntilLongBreak: state.sessionsUntilLongBreak - state.currentSessionCount,
+    };
+  }
+
+  // ============================================================
+  // 7. QUIZ SYSTEM
+  // ============================================================
+  function submitQuizAnswer(isCorrect) {
+    state.totalQuizzesTaken += 1;
+
+    if (isCorrect) {
+      state.totalCorrectAnswers += 1;
+    }
+
+    // Recalculate accuracy
+    state.quizAccuracy = state.totalQuizzesTaken > 0
+      ? Math.round((state.totalCorrectAnswers / state.totalQuizzesTaken) * 100)
+      : 0;
+
+    // Award XP
+    const xpEarned = isCorrect ? 15 : 5;
+    const xpResult = addXP(xpEarned);
+
+    // Studying counts too
+    recordStudyActivity(5);
+
+    saveState();
+
+    return {
+      correct: isCorrect,
+      accuracy: state.quizAccuracy,
+      totalQuizzes: state.totalQuizzesTaken,
+      totalCorrect: state.totalCorrectAnswers,
+      xpResult,
+    };
+  }
+
+  function getQuizStats() {
+    return {
+      totalQuizzesTaken: state.totalQuizzesTaken,
+      totalCorrectAnswers: state.totalCorrectAnswers,
+      accuracy: state.quizAccuracy,
+      isImproving: state.totalQuizzesTaken >= 5 && state.quizAccuracy >= 60,
+    };
+  }
+
+  function generateQuizQuestion() {
+    // Generates a simple math or trivia question
+    const questionBank = [
+      {
+        question: 'What is 12 × 8?',
+        options: ['96', '84', '108', '92'],
+        correctIndex: 0,
+        category: 'math',
+      },
+      {
+        question: 'What is the capital of France?',
+        options: ['London', 'Berlin', 'Paris', 'Madrid'],
+        correctIndex: 2,
+        category: 'geography',
+      },
+      {
+        question: 'How many planets are in our solar system?',
+        options: ['7', '8', '9', '10'],
+        correctIndex: 1,
+        category: 'science',
+      },
+      {
+        question: 'What is the chemical symbol for water?',
+        options: ['H2O', 'CO2', 'NaCl', 'O2'],
+        correctIndex: 0,
+        category: 'science',
+      },
+      {
+        question: 'What is 15% of 200?',
+        options: ['25', '30', '35', '40'],
+        correctIndex: 1,
+        category: 'math',
+      },
+      {
+        question: 'Who wrote "Romeo and Juliet"?',
+        options: ['Charles Dickens', 'William Shakespeare', 'Jane Austen', 'Mark Twain'],
+        correctIndex: 1,
+        category: 'literature',
+      },
+      {
+        question: 'What is the largest organ in the human body?',
+        options: ['Heart', 'Brain', 'Skin', 'Liver'],
+        correctIndex: 2,
+        category: 'biology',
+      },
+      {
+        question: 'What is the speed of light in km/s (approximately)?',
+        options: ['300,000', '150,000', '500,000', '100,000'],
+        correctIndex: 0,
+        category: 'physics',
+      },
+    ];
+
+    return questionBank[Math.floor(Math.random() * questionBank.length)];
+  }
+
+  // ============================================================
+  // 8. WEEKLY STUDY TRACKING
+  // ============================================================
+  function getWeeklyStudyData() {
+    // Returns study data organized for Monday-Sunday display
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayOrder = [1, 2, 3, 4, 5, 6, 0]; // Monday first
+
+    const weeklyData = dayOrder.map(dayIndex => ({
+      dayName: dayNames[dayIndex],
+      dayShort: dayNames[dayIndex].substring(0, 3),
+      minutes: state.weeklyStudyMinutes[dayIndex],
+      hours: parseFloat((state.weeklyStudyMinutes[dayIndex] / 60).toFixed(1)),
+    }));
+
+    const totalMinutes = state.weeklyStudyMinutes.reduce((sum, min) => sum + min, 0);
+
+    return {
+      days: weeklyData,
+      totalMinutes,
+      totalHours: parseFloat((totalMinutes / 60).toFixed(1)),
+      averageMinutesPerDay: totalMinutes > 0 ? Math.round(totalMinutes / 7) : 0,
+      mostProductiveDay: getMostProductiveDay(weeklyData),
+    };
+  }
+
+  function getMostProductiveDay(weeklyData) {
+    let maxMinutes = 0;
+    let maxDay = null;
+    weeklyData.forEach(day => {
+      if (day.minutes > maxMinutes) {
+        maxMinutes = day.minutes;
+        maxDay = day;
+      }
+    });
+    return maxDay && maxMinutes > 0 ? maxDay : null;
+  }
+
+  function getStudyStats() {
+    return {
+      totalStudyHours: parseFloat(state.totalStudyHours.toFixed(1)),
+      completedSessions: state.completedSessions,
+      weeklyData: getWeeklyStudyData(),
+      streakData: getStreakData(),
+    };
+  }
+
+  // ============================================================
+  // 9. GOALS SYSTEM
+  // ============================================================
+  function addGoal(goalText, targetMinutes) {
+    const goal = {
+      id: Date.now().toString(),
+      text: goalText,
+      targetMinutes: targetMinutes || 60,
+      currentMinutes: 0,
+      isCompleted: false,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+
+    state.goalsList.push(goal);
+    state.activeGoals = state.goalsList.filter(g => !g.isCompleted).length;
+    saveState();
+
+    return goal;
+  }
+
+  function updateGoalProgress(goalId, minutesToAdd) {
+    const goal = state.goalsList.find(g => g.id === goalId);
+    if (!goal || goal.isCompleted) return null;
+
+    goal.currentMinutes += minutesToAdd;
+
+    if (goal.currentMinutes >= goal.targetMinutes) {
+      goal.currentMinutes = goal.targetMinutes;
+      goal.isCompleted = true;
+      goal.completedAt = new Date().toISOString();
+      state.activeGoals = state.goalsList.filter(g => !g.isCompleted).length;
+
+      // Award bonus XP for completing a goal
+      addXP(25);
+    }
+
+    saveState();
+    return goal;
+  }
+
+  function removeGoal(goalId) {
+    const index = state.goalsList.findIndex(g => g.id === goalId);
+    if (index === -1) return false;
+
+    state.goalsList.splice(index, 1);
+    state.activeGoals = state.goalsList.filter(g => !g.isCompleted).length;
+    saveState();
+    return true;
+  }
+
+  function getGoals() {
+    return {
+      active: state.goalsList.filter(g => !g.isCompleted),
+      completed: state.goalsList.filter(g => g.isCompleted),
+      activeCount: state.activeGoals,
+      totalCount: state.goalsList.length,
+    };
+  }
+
+  // ============================================================
+  // 10. NOTES & FLASHCARDS SYSTEM
+  // ============================================================
+  function createNote() {
+    state.notesCount += 1;
+    addXP(5);
+    recordStudyActivity(5);
+    saveState();
+    return {
+      totalNotes: state.notesCount,
+      xpEarned: 5,
+    };
+  }
+
+  function reviewFlashcards(count) {
+    const reviewedCount = count || 10;
+    state.flashcardsReviewed += reviewedCount;
+    state.totalFlashcards = Math.max(state.totalFlashcards, state.flashcardsReviewed);
+
+    const xpEarned = Math.floor(reviewedCount / 2); // 1 XP per 2 cards
+    addXP(xpEarned);
+    recordStudyActivity(Math.floor(reviewedCount / 2));
+
+    saveState();
+
+    return {
+      totalReviewed: state.flashcardsReviewed,
+      totalCards: state.totalFlashcards,
+      xpEarned,
+    };
+  }
+
+  function getFlashcardStats() {
+    return {
+      reviewed: state.flashcardsReviewed,
+      total: state.totalFlashcards,
+      progressPercent: state.totalFlashcards > 0
+        ? Math.round((state.flashcardsReviewed / state.totalFlashcards) * 100)
+        : 0,
+    };
+  }
+
+  // ============================================================
+  // 11. AI TUTOR INTERACTION
+  // ============================================================
+  function askAITutor(question) {
+    // Simulate AI response (in a real app, this would call an API)
+    const responses = [
+      "That's a great question! Let me explain...",
+      "I'd be happy to help with that topic.",
+      "Let's break this down step by step.",
+      "Here's what you need to know about that...",
+      "Excellent question! The key concept here is...",
+    ];
+
+    const response = responses[Math.floor(Math.random() * responses.length)];
+
+    // Award small XP for curiosity
+    addXP(5);
+    recordStudyActivity(3);
+
+    saveState();
+
+    return {
+      question,
+      response,
+      xpEarned: 5,
+    };
+  }
+
+  // ============================================================
+  // 12. CUSTOM EVENT SYSTEM (For UI Communication)
+  // ============================================================
+  function dispatchFocusUpdate() {
+    const event = new CustomEvent('simbaStudy:focusUpdate', {
+      detail: getFocusState(),
+    });
+    document.dispatchEvent(event);
+  }
+
+  function dispatchFocusComplete(duration, needsLongBreak) {
+    const event = new CustomEvent('simbaStudy:focusComplete', {
+      detail: {
+        duration,
+        needsLongBreak,
+        focusState: getFocusState(),
+        studyStats: getStudyStats(),
+        xpProgress: getXPProgress(),
+      },
+    });
+    document.dispatchEvent(event);
+  }
+
+  function dispatchStateChange() {
+    const event = new CustomEvent('simbaStudy:stateChange', {
+      detail: getFullDashboardData(),
+    });
+    document.dispatchEvent(event);
+  }
+
+  // ============================================================
+  // 13. FULL DASHBOARD DATA GETTER
+  // ============================================================
+  function getFullDashboardData() {
+    return {
+      streak: getStreakData(),
+      study: getStudyStats(),
+      quiz: getQuizStats(),
+      xp: getXPProgress(),
+      focus: getFocusState(),
+      goals: getGoals(),
+      flashcards: getFlashcardStats(),
+      notes: { totalNotes: state.notesCount },
+      profile: {
+        name: state.userName,
+        initial: state.userInitial,
+        level: state.level,
+      },
+      isStudiedToday: state.studiedToday,
+      activeGoalsCount: state.activeGoals,
+      completedSessionsTotal: state.completedSessions,
+    };
+  }
+
+  // ============================================================
+  // 14. INITIALIZATION
+  // ============================================================
+  function initialize() {
+    // Load saved state
+    const hasSavedData = loadState();
+
+    // If no saved data, this is a fresh start
+    if (!hasSavedData) {
+      saveState();
+    }
+
+    // Check if daily reset is needed
+    checkDailyReset();
+
+    // Reset focus mode if it was left active (browser closed during session)
+    if (state.isFocusModeActive) {
+      if (state.focusTimerInterval) {
+        clearInterval(state.focusTimerInterval);
+        state.focusTimerInterval = null;
+      }
+      // Record whatever time was spent
+      if (state.currentFocusMinutes > 0) {
+        recordStudyActivity(Math.floor(state.currentFocusMinutes));
+      }
+      state.isFocusModeActive = false;
+      state.currentFocusMinutes = 0;
+      saveState();
+    }
+
+    // Recalculate XP threshold in case level formula changed
+    state.xpToNextLevel = calculateXPForNextLevel(state.level);
+
+    // Dispatch initial state
+    dispatchStateChange();
+
+    console.log('🔥 SimbaStudy OS Engine Initialized');
+    console.log('📊 Dashboard Data:', getFullDashboardData());
+  }
+
+  // ============================================================
+  // 15. PUBLIC API (Exposed Globally)
+  // ============================================================
+  window.SimbaStudy = {
+    // Core Study Actions
+    recordStudyActivity,
+    startFocusSession,
+    pauseFocusSession,
+    resumeFocusSession,
+    cancelFocusSession,
+    completeFocusSession,
+
+    // Quiz System
+    submitQuizAnswer,
+    generateQuizQuestion,
+    getQuizStats,
+
+    // XP & Leveling
+    addXP,
+    getXPProgress,
+
+    // Streak
+    getStreakData,
+
+    // Goals
+    addGoal,
+    updateGoalProgress,
+    removeGoal,
+    getGoals,
+
+    // Notes & Flashcards
+    createNote,
+    reviewFlashcards,
+    getFlashcardStats,
+
+    // AI Tutor
+    askAITutor,
+
+    // Study Data
+    getWeeklyStudyData,
+    getStudyStats,
+    getFocusState,
+
+    // Full Dashboard
+    getFullDashboardData,
+
+    // State Management
+    saveState,
+    loadState,
+    clearState,
+
+    // Initialization
+    initialize,
+
+    // Event Hooks (for UI to listen)
+    on: function(eventName, callback) {
+      document.addEventListener(`simbaStudy:${eventName}`, callback);
+    },
+    off: function(eventName, callback) {
+      document.removeEventListener(`simbaStudy:${eventName}`, callback);
+    },
+  };
+
+  // Auto-initialize when script loads
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    initialize();
+  }
+
+})();

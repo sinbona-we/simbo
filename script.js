@@ -91,7 +91,11 @@ function bootstrap() {
   bindNotes();
   bindQuiz();
   bindGlobalControls();
+  bindMicroInteractions();
   renderAll();
+  requestAnimationFrame(() => {
+    document.body.classList.add("ready");
+  });
 }
 
 function bindNavigation() {
@@ -447,6 +451,23 @@ function bindGlobalControls() {
   });
 }
 
+function bindMicroInteractions() {
+  const cards = document.querySelectorAll(".card-elevated, .metric-card, .hero");
+  cards.forEach((card) => {
+    card.addEventListener("mousemove", (event) => {
+      const rect = card.getBoundingClientRect();
+      const px = (event.clientX - rect.left) / rect.width;
+      const py = (event.clientY - rect.top) / rect.height;
+      card.style.setProperty("--mx", `${px}`);
+      card.style.setProperty("--my", `${py}`);
+    });
+    card.addEventListener("mouseleave", () => {
+      card.style.removeProperty("--mx");
+      card.style.removeProperty("--my");
+    });
+  });
+}
+
 function renderAll() {
   renderDashboard();
   renderPlanner();
@@ -692,6 +713,16 @@ function openSection(id) {
   });
   const selectedBtn = [...els.navBtns].find((btn) => btn.dataset.section === id);
   els.sectionTitle.textContent = selectedBtn ? selectedBtn.textContent : "Dashboard";
+  const activeSection = document.getElementById(id);
+  if (activeSection) {
+    activeSection.animate(
+      [
+        { opacity: 0.65, transform: "translateY(8px)" },
+        { opacity: 1, transform: "translateY(0)" }
+      ],
+      { duration: 260, easing: "ease-out" }
+    );
+  }
 }
 
 function tickTimer() {
@@ -799,4 +830,3 @@ function escapeHtml(value) {
 function escapeHtmlAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#96;");
 }
-
